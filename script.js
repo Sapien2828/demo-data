@@ -12,7 +12,6 @@ const CSV_SRC = "./data.csv";
 const MAX_TIME_LIMIT = 30; 
 const MOVE_FRAMES_PER_MINUTE = 120; 
 
-// --- DOM要素 ---
 const gameArea = document.getElementById('game-area');
 const canvas = document.getElementById('map-canvas');
 const ctx = canvas.getContext('2d');
@@ -38,7 +37,8 @@ let scaleFactor = 1;
 let gameOffsetX = 0;
 let gameOffsetY = 0;
 
-let player = { x: 508, y: 500, radius: 10, speed: 4, id: "" };
+// ★変更箇所1：ゲーム読み込み時の初期座標
+let player = { x: 414, y: 364, radius: 10, speed: 4, id: "" };
 let keys = {};
 let roomData = [];
 let logs = [];
@@ -552,7 +552,9 @@ document.getElementById('btn-start').onclick = () => {
     
     document.getElementById('top-screen').style.display = 'none';
     isGameRunning = true;
-    player.x = 508; player.y = 500;
+
+    // ★変更箇所2：スタートボタンを押したときの座標
+    player.x = 414; player.y = 364;
     
     // 初期地点の記録
     recordTrajectoryPoint();
