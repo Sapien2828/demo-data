@@ -1,4 +1,4 @@
-// script.js - 完全版（十字キー追加・画面スクロール防止・デモ用）
+// script.js - 完全版（十字キー追加・エラー検知機能付き）
 
 const GAS_URL = "https://script.google.com/macros/s/AKfycbwFkwNX-YeMomdhC31w3Y5I1jtYtNwZ2slsuI1SHaczBdsg2Z0hcO7zqYbNrfaj00bRPQ/exec";
 
@@ -25,7 +25,7 @@ const resultLogBody = document.getElementById('result-log-body');
 const endScreen = document.getElementById('end-screen');
 const timerBarFill = document.getElementById('timer-bar-fill');
 const timerText = document.getElementById('timer-text');
-const dpadControls = document.getElementById('dpad-controls'); // ★追加: 十字キー
+const dpadControls = document.getElementById('dpad-controls'); // 十字キー
 
 const collisionCanvas = document.createElement('canvas');
 const collisionCtx = collisionCanvas.getContext('2d');
@@ -51,11 +51,17 @@ let sessionStartTime = "";
 let eventOpenTime = 0; 
 let hasPlayerMoved = false;
 
-// --- 初期化 ---
-mapImage.src = MAP_SRC;
-collisionImage.src = COLLISION_SRC;
-
+// --- 初期化とエラー検知（SE的アプローチ） ---
 let imagesLoaded = 0;
+
+// ★画像が読み込めなかった時のエラー警告機能を追加
+mapImage.onerror = () => {
+    alert(`【システムエラー】\nマップ画像 '${MAP_SRC}' の読み込みに失敗しました。\nファイル名が完全に一致しているか確認してください。`);
+};
+collisionImage.onerror = () => {
+    alert(`【システムエラー】\n衝突判定マップ '${COLLISION_SRC}' の読み込みに失敗しました。\nファイル名が完全に一致しているか確認してください。`);
+};
+
 function onImageLoad() {
     imagesLoaded++;
     if (imagesLoaded === 2) {
@@ -63,10 +69,16 @@ function onImageLoad() {
         fetch(CSV_SRC)
             .then(r => r.text())
             .then(parseCSV)
-            .catch(e => console.error("CSV Load Error:", e));
+            .catch(e => {
+                console.error("CSV Load Error:", e);
+                alert("データの読み込みに失敗しました。data.csvを確認してください。");
+            });
         requestAnimationFrame(gameLoop);
     }
 }
+
+mapImage.src = MAP_SRC;
+collisionImage.src = COLLISION_SRC;
 mapImage.onload = onImageLoad;
 collisionImage.onload = onImageLoad;
 
@@ -86,11 +98,13 @@ function initGameSize() {
 window.addEventListener('resize', initGameSize);
 
 // --- 入力（キーボード） ---
-// ★画面スクロール防止処理を追加
 window.addEventListener('keydown', e => {
     keys[e.key] = true;
     if(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(e.key)) {
-        e.preventDefault();
+        // ★テキストボックス入力中はスクロール防止を無効化する処理を追加
+        if(document.activeElement !== playerIdInput) {
+            e.preventDefault();
+        }
     }
 });
 window.addEventListener('keyup', e => keys[e.key] = false);
@@ -103,25 +117,20 @@ function bindDpad(btnId, keyName) {
     const press = (e) => { e.preventDefault(); keys[keyName] = true; };
     const release = (e) => { e.preventDefault(); keys[keyName] = false; };
 
-    // マウス操作用
     btn.addEventListener('mousedown', press);
     btn.addEventListener('mouseup', release);
-    btn.addEventListener('mouseleave', release); // マウスがボタン外に出た時も停止
-
-    // スマホ・タブレットのタッチ操作用
+    btn.addEventListener('mouseleave', release); 
     btn.addEventListener('touchstart', press, { passive: false });
     btn.addEventListener('touchend', release);
     btn.addEventListener('touchcancel', release);
 }
 
-// 画面が読み込まれた後にバインドを実行
 document.addEventListener('DOMContentLoaded', () => {
     bindDpad('btn-up', 'ArrowUp');
     bindDpad('btn-down', 'ArrowDown');
     bindDpad('btn-left', 'ArrowLeft');
     bindDpad('btn-right', 'ArrowRight');
 });
-
 
 canvas.addEventListener('mousemove', (e) => {
     const rect = canvas.getBoundingClientRect();
@@ -267,7 +276,7 @@ function checkTimeLimit() { if (accumulatedTime >= MAX_TIME_LIMIT) { finishGame(
 function finishGame() {
     isGameRunning = false;
     eventPopup.style.display = 'none';
-    if(dpadControls) dpadControls.style.display = 'none'; // ★十字キーを隠す
+    if(dpadControls) dpadControls.style.display = 'none'; 
     
     draw(); 
     const dataURL = canvas.toDataURL("image/jpeg", 0.8);
@@ -376,13 +385,19 @@ function addLogToScreen(location, event, choice, duration) {
     logSection.prepend(div);
 }
 
+// ★通信エラー箇所の修正
 function sendToGAS(data) { fetch(GAS_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data), keepalive: true }).catch(e=>console.error(e)); }
 function sendImageToGAS() { try { fetch(GAS_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ type: 'image', playerId: player.id, sessionUUID: sessionUUID, startTime: sessionStartTime, image: canvas.toDataURL("image/jpeg", 0.7).split("base64,")[1] }), keepalive: true }); } catch (e) {} }
 function sendTrajectoryToGAS() {
     if (movementHistory.length === 0) return;
     let hist = movementHistory.length > 3000 ? movementHistory.filter((_, i) => i % Math.ceil(movementHistory.length / 3000) === 0) : movementHistory;
-    const blob = new Blob([JSON.stringify({ type: 'trajectory', playerId: player.id, sessionUUID: sessionUUID, startTime: sessionStartTime, history: hist })], { type: 'text/plain' });
-    navigator.sendBeacon ? navigator.sendBeacon(GAS_URL, blob) : fetch(GAS_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload), keepalive: true });
+    const payload = { type: 'trajectory', playerId: player.id, sessionUUID: sessionUUID, startTime: sessionStartTime, history: hist };
+    const blob = new Blob([JSON.stringify(payload)], { type: 'text/plain' });
+    if(navigator.sendBeacon) {
+        navigator.sendBeacon(GAS_URL, blob);
+    } else {
+        fetch(GAS_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload), keepalive: true });
+    }
 }
 
 // --- スタートボタン ---
@@ -394,7 +409,6 @@ document.getElementById('btn-start').onclick = () => {
     isGameRunning = true;
     player.x = 414; player.y = 364; recordTrajectoryPoint(); hasPlayerMoved = false;
 
-    // ★ゲームが始まったら十字キーを表示
     if (dpadControls) {
         dpadControls.style.display = 'grid';
     }
