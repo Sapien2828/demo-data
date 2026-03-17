@@ -1,7 +1,7 @@
 // script.js - 完全版（部屋No記録・時間のみ表示追加）
 
 // ★指定のGAS URL
-const GAS_URL = "https://script.google.com/macros/s/AKfycbx8Oxc4dVAK1v5crQjBGEH6zbpg3m7hZFKxx7tn9ERKfHN4bYyDSY_Y5yXuGf1cEc1L/exec";
+const GAS_URL = "https://script.google.com/macros/s/AKfycbwFkwNX-YeMomdhC31w3Y5I1jtYtNwZ2slsuI1SHaczBdsg2Z0hcO7zqYbNrfaj00bRPQ/exec";
 
 // --- 画像・データファイルパス ---
 const MAP_SRC = "./map -demo.bmp";
@@ -179,10 +179,37 @@ function recordTrajectoryPoint() {
     });
 }
 
+t
 function checkCollision(x, y) {
+    // 画面外は壁扱い
     if (x < 0 || x > mapImage.width || y < 0 || y > mapImage.height) return true;
-    const p = collisionCtx.getImageData(Math.floor(x), Math.floor(y), 1, 1).data;
-    if (p[0] < 50 && p[1] < 50 && p[2] < 50) return true;
+
+    // 当たり判定の広さ（見た目の半径10より少し小さい「8」くらいにすると引っかかりにくくスムーズです）
+    const r = 8;
+
+    // 中心、左、右、上、下の5点をチェックする
+    const checkPoints = [
+        { px: x, py: y },
+        { px: x - r, py: y }, // 左端
+        { px: x + r, py: y }, // 右端
+        { px: x, py: y - r }, // 上端
+        { px: x, py: y + r }  // 下端
+    ];
+
+    for (let i = 0; i < checkPoints.length; i++) {
+        let pt = checkPoints[i];
+        // 判定ポイントが画面外にはみ出たら壁扱い
+        if (pt.px < 0 || pt.px > mapImage.width || pt.py < 0 || pt.py > mapImage.height) return true;
+        
+        // そのポイントの色を取得
+        const p = collisionCtx.getImageData(Math.floor(pt.px), Math.floor(pt.py), 1, 1).data;
+        // 黒っぽい色（RGBがすべて50未満）なら壁とみなす
+        if (p[0] < 50 && p[1] < 50 && p[2] < 50) {
+            return true;
+        }
+    }
+    
+    // どのポイントも壁に触れていなければ移動OK
     return false;
 }
 
