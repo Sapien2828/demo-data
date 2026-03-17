@@ -1,6 +1,6 @@
-// script.js - 完全版（部屋No記録・時間のみ表示追加）
+// script.js - 完全版（デモ用マップ・初期座標修正・当たり判定強化）
 
-// ★指定のGAS URL
+// ★指定のGAS URL（新しいシートのURLを発行したらここを書き換えてください）
 const GAS_URL = "https://script.google.com/macros/s/AKfycbwFkwNX-YeMomdhC31w3Y5I1jtYtNwZ2slsuI1SHaczBdsg2Z0hcO7zqYbNrfaj00bRPQ/exec";
 
 // --- 画像・データファイルパス ---
@@ -12,6 +12,7 @@ const CSV_SRC = "./data.csv";
 const MAX_TIME_LIMIT = 30; 
 const MOVE_FRAMES_PER_MINUTE = 120; 
 
+// --- DOM要素 ---
 const gameArea = document.getElementById('game-area');
 const canvas = document.getElementById('map-canvas');
 const ctx = canvas.getContext('2d');
@@ -37,7 +38,7 @@ let scaleFactor = 1;
 let gameOffsetX = 0;
 let gameOffsetY = 0;
 
-// ★変更箇所1：ゲーム読み込み時の初期座標
+// ★ゲーム読み込み時の初期座標
 let player = { x: 414, y: 364, radius: 10, speed: 4, id: "" };
 let keys = {};
 let roomData = [];
@@ -153,17 +154,15 @@ function update() {
 // 軌跡ポイント記録関数
 function recordTrajectoryPoint() {
     const now = new Date();
-    // 時間のみ文字列 (HH:mm:ss)
     const timeOnly = now.toLocaleTimeString('ja-JP', { hour12: false });
     
-    // 現在地がどの部屋の範囲内か判定
     let currentRoom = null;
     for (let i = 0; i < roomData.length; i++) {
         const room = roomData[i];
         const dist = Math.hypot(player.x - room.x, player.y - room.y);
         if (dist < room.radius) {
             currentRoom = room;
-            break; // 最初に見つかった部屋を採用
+            break; 
         }
     }
 
@@ -172,44 +171,35 @@ function recordTrajectoryPoint() {
         y: Math.floor(player.y), 
         time: accumulatedTime,
         realTime: now.toLocaleString(),
-        timeOnly: timeOnly, // ★追加: 時間のみ
-        no: currentRoom ? currentRoom.csvNo : "", // ★追加: 部屋No
-        manageId: currentRoom ? currentRoom.csvManageId : "", // ★追加: 管理No
-        roomName: currentRoom ? currentRoom.name : "" // ★追加: 部屋名
+        timeOnly: timeOnly,
+        no: currentRoom ? currentRoom.csvNo : "", 
+        manageId: currentRoom ? currentRoom.csvManageId : "", 
+        roomName: currentRoom ? currentRoom.name : "" 
     });
 }
 
-t
+// ★当たり判定の強化（5点判定）
 function checkCollision(x, y) {
-    // 画面外は壁扱い
     if (x < 0 || x > mapImage.width || y < 0 || y > mapImage.height) return true;
 
-    // 当たり判定の広さ（見た目の半径10より少し小さい「8」くらいにすると引っかかりにくくスムーズです）
-    const r = 8;
-
-    // 中心、左、右、上、下の5点をチェックする
+    const r = 8; // 半径
     const checkPoints = [
         { px: x, py: y },
-        { px: x - r, py: y }, // 左端
-        { px: x + r, py: y }, // 右端
-        { px: x, py: y - r }, // 上端
-        { px: x, py: y + r }  // 下端
+        { px: x - r, py: y },
+        { px: x + r, py: y },
+        { px: x, py: y - r },
+        { px: x, py: y + r }
     ];
 
     for (let i = 0; i < checkPoints.length; i++) {
         let pt = checkPoints[i];
-        // 判定ポイントが画面外にはみ出たら壁扱い
         if (pt.px < 0 || pt.px > mapImage.width || pt.py < 0 || pt.py > mapImage.height) return true;
         
-        // そのポイントの色を取得
         const p = collisionCtx.getImageData(Math.floor(pt.px), Math.floor(pt.py), 1, 1).data;
-        // 黒っぽい色（RGBがすべて50未満）なら壁とみなす
         if (p[0] < 50 && p[1] < 50 && p[2] < 50) {
             return true;
         }
     }
-    
-    // どのポイントも壁に触れていなければ移動OK
     return false;
 }
 
@@ -288,7 +278,7 @@ function finishGame() {
     isGameRunning = false;
     eventPopup.style.display = 'none';
     
-    draw(); // 最終描画
+    draw(); 
     const dataURL = canvas.toDataURL("image/jpeg", 0.8);
     const imgContainer = document.getElementById('result-map-image-container');
     imgContainer.innerHTML = "";
@@ -309,7 +299,6 @@ function finishGame() {
         };
     }
 
-    // 画像と軌跡データを送信
     sendImageToGAS();
     sendTrajectoryToGAS();
 
@@ -351,10 +340,9 @@ function parseCSV(text) {
         const row = parseCSVLine(lines[i]);
         if(row.length < 5) continue;
         
-        // CSV読み込み (A:No, B:ManageNo, C:Name, D:X, E:Y...)
-        const csvNo = row[0];        // A列: No
-        const csvManageId = row[1];  // B列: 管理No
-        const roomName = row[2];     // C列: 部屋名
+        const csvNo = row[0];        
+        const csvManageId = row[1];  
+        const roomName = row[2];     
         const x = parseInt(row[3]);
         const y = parseInt(row[4]);
         const r = parseInt(row[5]);
@@ -365,8 +353,8 @@ function parseCSV(text) {
             room = { 
                 name: roomName, x: x, y: y, radius: r, tasks: [], 
                 isDiscovered: false, ignoreUntilExit: false, currentTaskIndex: 0,
-                csvNo: csvNo,             // ★保持
-                csvManageId: csvManageId  // ★保持
+                csvNo: csvNo,             
+                csvManageId: csvManageId  
             };
             roomData.push(room);
         }
@@ -485,8 +473,8 @@ function recordLog(room, task, choiceText, resultText) {
         timestamp: now.toLocaleString(),
         elapsedTime: accumulatedTime + "分",
         decisionTime: duration, 
-        roomNo: room.csvNo,           // ★追加
-        roomManageId: room.csvManageId, // ★追加
+        roomNo: room.csvNo,           
+        roomManageId: room.csvManageId, 
         location: room.name,
         event: task.name,
         choice: choiceText,
@@ -580,7 +568,7 @@ document.getElementById('btn-start').onclick = () => {
     document.getElementById('top-screen').style.display = 'none';
     isGameRunning = true;
 
-    // ★変更箇所2：スタートボタンを押したときの座標
+    // ★スタートボタンを押したときの座標
     player.x = 414; player.y = 364;
     
     // 初期地点の記録
@@ -628,7 +616,6 @@ window.downloadAllLogs = () => {
 };
 
 window.downloadPathLogs = () => {
-    // CSVヘッダーにも部屋情報を追加
     let csvContent = "PointRealTime,TimeOnly,SimTime,X,Y,No,管理No,部屋名\n" + movementHistory.map(m => 
         `${m.realTime},${m.timeOnly},${m.time},${m.x},${m.y},${m.no},${m.manageId},${m.roomName}`
     ).join("\n");
