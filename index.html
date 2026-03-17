@@ -129,6 +129,43 @@
         }
 
 </style>
+/* 十字キー（D-Pad）のスタイル */
+        .dpad-container {
+            position: fixed;
+            bottom: 30px; /* 下からの余白 */
+            right: 30px;  /* 右からの余白 */
+            display: grid;
+            grid-template-columns: 60px 60px 60px;
+            grid-template-rows: 60px 60px 60px;
+            gap: 5px;
+            z-index: 1000;
+            /* スマホ操作時のテキスト選択やハイライトを無効化 */
+            user-select: none;
+            -webkit-user-select: none;
+            -webkit-touch-callout: none;
+        }
+        .dpad-btn {
+            background-color: rgba(255, 255, 255, 0.8);
+            border: 2px solid #555;
+            border-radius: 12px;
+            font-size: 28px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            cursor: pointer;
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            touch-action: none; /* スマホでの画面スクロールを強制ブロック */
+        }
+        .dpad-btn:active {
+            background-color: rgba(200, 200, 200, 0.9);
+            box-shadow: 0 2px 3px rgba(0,0,0,0.3);
+            transform: translateY(2px);
+        }
+        /* 各ボタンの配置（グリッドレイアウト） */
+        .dpad-up { grid-column: 2; grid-row: 1; }
+        .dpad-left { grid-column: 1; grid-row: 2; }
+        .dpad-right { grid-column: 3; grid-row: 2; }
+        .dpad-down { grid-column: 2; grid-row: 3; }
 </head>
 <body>
     <div class="demo-badge">DEMO MODE</div> 
@@ -226,6 +263,16 @@
             </div>
         </div>
     </div>
+<div class="dpad-container" id="dpad-controls" style="display: none;">
+        <div class="dpad-btn dpad-up" id="btn-up">▲</div>
+        <div class="dpad-btn dpad-left" id="btn-left">◀</div>
+        <div class="dpad-btn dpad-right" id="btn-right">▶</div>
+        <div class="dpad-btn dpad-down" id="btn-down">▼</div>
+    </div>
+
+
+
+
 
     <script src="script.js"></script>
 </body>
