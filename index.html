@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>病院災害対応シミュレーション</title>
+<title>放射線科発災30分間シュミレーション</title>
 <style>
     /* 全体レイアウト：Flexboxで左右分割 */
     body {
@@ -21,7 +21,7 @@
 
     #main-container { display: flex; width: 100%; height: 100%; max-width: 1600px; }
 
-    /* 左側：ゲーム画面（マップ） */
+    /* 左側：ゲーム画面 */
     #game-area {
         flex: 3; position: relative; background-color: #000; overflow: hidden; border-right: 2px solid #444;
     }
@@ -46,43 +46,76 @@
     /* --- トップ画面 --- */
     #top-screen {
         position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        background: linear-gradient(to bottom, #111, #333); z-index: 3000;
+        background: linear-gradient(to bottom, #111, #333);
+        z-index: 3000;
         display: flex; flex-direction: column; align-items: center; justify-content: center;
     }
-    #top-title { font-size: 3em; color: #ffd700; text-shadow: 4px 4px 0 #000; margin-bottom: 30px; letter-spacing: 2px; text-align: center; }
+    #top-title {
+        font-size: 3em; color: #ffd700; text-shadow: 4px 4px 0 #000; 
+        margin-bottom: 30px; letter-spacing: 2px; text-align: center;
+    }
     #player-input-container { margin-bottom: 20px; text-align: center; }
-    #player-id-input { padding: 10px; font-size: 1.2em; border-radius: 5px; border: none; text-align: center; width: 250px; font-family: 'Meiryo', sans-serif; }
+    #player-id-input {
+        padding: 10px; font-size: 1.2em; border-radius: 5px; border: none; text-align: center; width: 250px;
+        font-family: 'Meiryo', sans-serif;
+    }
     .start-btn, .dl-btn {
-        padding: 15px 40px; font-size: 1.5em; background-color: #d9534f; color: white; border: none; border-radius: 50px;
-        cursor: pointer; margin: 10px; transition: transform 0.2s; font-family: 'Meiryo', sans-serif;
+        padding: 15px 40px; font-size: 1.5em; 
+        background-color: #d9534f; color: white; border: none; border-radius: 50px;
+        cursor: pointer; margin: 10px; transition: transform 0.2s;
+        font-family: 'Meiryo', sans-serif;
     }
     .start-btn:hover { transform: scale(1.05); background-color: #c9302c; }
     .dl-btn { font-size: 1em; padding: 10px 20px; background-color: #5bc0de; }
     .btn-exit { background-color: #555; }
     .btn-retry { background-color: #5cb85c; }
     .btn-finish { background-color: #333; border: 1px solid #777; }
+    .btn-img-save { background-color: #e67e22; }
 
     /* --- オーバーレイ --- */
     .overlay-screen {
-        display: none; position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.9); z-index: 2000; align-items: center; justify-content: center;
+        display: none; position: absolute; top: 0; left: 0; 
+        width: 100%; height: 100%; background: rgba(0,0,0,0.9); 
+        z-index: 2000; align-items: center; justify-content: center;
     }
-    .popup-content, .login-box { background: #333; padding: 25px; border-radius: 10px; max-width: 600px; width: 90%; text-align: center; border: 2px solid #777; }
+    .popup-content, .login-box {
+        background: #333; padding: 25px; border-radius: 10px; 
+        max-width: 600px; width: 90%; text-align: center; border: 2px solid #777;
+        max-height: 90vh; overflow-y: auto; 
+    }
     .choice-btn {
-        display: block; width: 100%; margin: 10px 0; padding: 12px; background: #444; color: white; border: 1px solid #777; cursor: pointer; text-align: left; transition: background 0.2s; font-family: 'Meiryo', sans-serif;
+        display: block; width: 100%; margin: 10px 0; padding: 12px;
+        background: #444; color: white; border: 1px solid #777; cursor: pointer;
+        text-align: left; transition: background 0.2s;
+        font-family: 'Meiryo', sans-serif;
     }
     .choice-btn:hover { background: #555; }
 
     /* テーブル */
-    .table-container { max-height: 400px; overflow-y: auto; margin-top: 10px; }
+    .table-container { max-height: 300px; overflow-y: auto; margin-top: 10px; }
     table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
     th, td { border: 1px solid #555; padding: 5px; text-align: left; color: white; }
     th { background-color: #444; position: sticky; top: 0; }
 
     #result-content { max-width: 800px; }
-    #end-screen { display: none; flex-direction: column; align-items: center; justify-content: center; width: 100%; height: 100%; background: #000; z-index: 4000; position: absolute; top: 0; left: 0; }
+    
+    #end-screen {
+        display: none; flex-direction: column; align-items: center; justify-content: center;
+        width: 100%; height: 100%; background: #000; z-index: 4000; position: absolute; top: 0; left: 0;
+    }
+
+    /* 結果画像の表示エリア */
+    #result-map-image-container {
+        margin: 15px 0; border: 2px solid #555; text-align: center;
+    }
+    #result-map-image-container img {
+        max-width: 100%; height: auto; display: block; margin: 0 auto;
+    }
+
 </style>
 </head>
 <body>
+
     <div id="main-container">
         <div id="game-area">
             <canvas id="map-canvas"></canvas>
@@ -106,7 +139,7 @@
     </div>
 
     <div id="top-screen">
-        <h1 id="top-title">HOSPITAL DISASTER<br>SIMULATION</h1>
+        <h1 id="top-title">放射線科発災30分間<br>シュミレーション</h1>
         <div id="player-input-container">
             <input type="text" id="player-id-input" placeholder="職員ID / 氏名を入力">
         </div>
@@ -125,7 +158,8 @@
     <div id="result-screen" class="overlay-screen">
         <div class="popup-content" id="result-content">
             <div style="font-size:1.5em; color:#5bc0de; margin-bottom:10px;">訓練終了（制限時間到達）</div>
-            <p>30分が経過しました。<br>以下のログが記録されました。</p>
+            <p>30分が経過しました。<br>お疲れ様でした。</p>
+            <div id="result-map-image-container"></div>
             <div class="table-container">
                 <table id="result-table">
                     <thead><tr><th>時間</th><th>場所</th><th>イベント</th><th>選択</th><th>結果</th></tr></thead>
@@ -133,8 +167,8 @@
                 </table>
             </div>
             <div class="button-area" style="margin-top:20px;">
+                <button class="dl-btn btn-img-save" id="btn-save-image">マップ画像を保存</button>
                 <button class="dl-btn" onclick="downloadAllLogs()">ログCSV保存</button>
-                <button class="dl-btn btn-path" onclick="downloadPathLogs()">軌跡CSV保存</button>
                 <button class="dl-btn btn-retry" onclick="location.reload()">最初から</button>
                 <button class="dl-btn btn-finish" onclick="showEndScreen()">終了する</button>
             </div>
