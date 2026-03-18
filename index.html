@@ -164,7 +164,9 @@
                 <p>スキマ時間を活用した事前学習により、<strong>ベテランの経験知（暗黙知）を可視化</strong>し、訓練当日までの<strong>レディネス（準備性）</strong>を劇的に向上させます。抽出された客観的な行動データは、実効性のあるBCP（事業継続計画）への持続的なブラッシュアップへと繋がります。</p>
 
                 <div style="text-align: center; margin-top: 15px;">
-                    <img src="./concept.jpg" alt="コンセプト図" style="max-width: 100%; height: auto; border-radius: 5px; border: 1px solid #ccc;">
+                    <button onclick="document.getElementById('concept-modal').style.display='flex'" style="background-color: #6c757d; font-size: 14px; padding: 10px 20px; border-radius: 5px;">
+                        📊 本アプリのコンセプト図解を見る
+                    </button>
                 </div>
 
                 <p style="font-size: 11px; color: #777; text-align: left; margin-top: 10px; margin-bottom: 0;">
@@ -195,6 +197,13 @@
                 <button id="btn-save-image" style="background-color: #28a745;">マップ画像を保存</button>
                 <button onclick="showEndScreen()">終了する</button>
             </div>
+        </div>
+    </div>
+
+    <div id="concept-modal" class="overlay-screen" style="display: none; z-index: 3000; background: rgba(0,0,0,0.9);" onclick="this.style.display='none'">
+        <div style="position: relative; max-width: 95%; max-height: 95%; text-align: center;">
+            <div style="color: white; margin-bottom: 10px; font-size: 14px;">※画面をタップすると閉じます</div>
+            <img src="./concept.jpg" alt="コンセプト図" style="max-width: 100%; max-height: 80vh; border-radius: 5px; box-shadow: 0 4px 10px rgba(0,0,0,0.8);">
         </div>
     </div>
 
