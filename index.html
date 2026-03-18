@@ -5,93 +5,42 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>RUG（放射線科初期対応シュミレーションゲーム）</title>
     <style>
-        /* --- 全体の基本設定 --- */
-        body {
-            margin: 0; padding: 0;
-            background-color: #222; color: #fff;
-            font-family: 'Meiryo', sans-serif;
-            overflow: hidden; 
-        }
-
+        body { margin: 0; padding: 0; background-color: #222; color: #fff; font-family: 'Meiryo', sans-serif; overflow: hidden; }
         #game-area { position: relative; width: 100vw; height: 100vh; }
         canvas { display: block; }
-
-        .status-header {
-            position: fixed; top: 10px; left: 10px; z-index: 1000;
-            pointer-events: none; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 8px;
-        }
-        #timer-bar {
-            width: 200px; height: 15px; background: #555; border: 2px solid #fff; border-radius: 10px; overflow: hidden; margin-bottom: 5px;
-        }
+        .status-header { position: fixed; top: 10px; left: 10px; z-index: 1000; pointer-events: none; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 8px; }
+        #timer-bar { width: 200px; height: 15px; background: #555; border: 2px solid #fff; border-radius: 10px; overflow: hidden; margin-bottom: 5px; }
         #timer-bar-fill { width: 0%; height: 100%; background: #00ff00; transition: width 0.3s; }
         #timer-text, #status-message { font-weight: bold; text-shadow: 1px 1px 2px #000; }
         #status-message { color: #ffcc00; margin-top: 5px; }
-
-        #coord-display {
-            position: fixed; bottom: 10px; left: 10px;
-            background: rgba(0,0,0,0.6); padding: 5px; border-radius: 4px; font-size: 12px; pointer-events: none; z-index: 1000;
-        }
-
-        #log-section {
-            position: fixed; top: 50px; right: 10px;
-            width: 250px; max-height: 300px; overflow-y: auto;
-            background: rgba(0,0,0,0.6); padding: 10px; border-radius: 5px; font-size: 12px; pointer-events: none; z-index: 1000;
-        }
+        #coord-display { position: fixed; bottom: 10px; left: 10px; background: rgba(0,0,0,0.6); padding: 5px; border-radius: 4px; font-size: 12px; pointer-events: none; z-index: 1000; }
+        #log-section { position: fixed; top: 50px; right: 10px; width: 250px; max-height: 300px; overflow-y: auto; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 5px; font-size: 12px; pointer-events: none; z-index: 1000; }
         .log-item { margin-bottom: 5px; border-bottom: 1px solid #555; padding-bottom: 5px; }
         .log-time { color: #00ff00; }
         .log-event { color: #00ccff; font-weight: bold; }
-
-        .overlay-screen {
-            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
-            background: rgba(0,0,0,0.85); display: flex; flex-direction: column;
-            align-items: center; justify-content: center; z-index: 2000;
-        }
-        .panel {
-            background: #333; padding: 20px 30px; border-radius: 10px;
-            text-align: center; border: 2px solid #555; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
-            max-width: 90%; max-height: 90%; overflow-y: auto;
-        }
-        input[type="text"], input[type="password"] {
-            padding: 10px; font-size: 16px; margin: 15px 0; width: 80%;
-            border-radius: 5px; border: 1px solid #ccc;
-        }
-        button {
-            padding: 10px 20px; font-size: 16px; font-weight: bold; cursor: pointer;
-            margin: 5px; border-radius: 5px; border: none; background-color: #007bff; color: white;
-        }
+        .overlay-screen { position: fixed; top: 0; left: 0; width: 100vw; height: 100vh; background: rgba(0,0,0,0.85); display: flex; flex-direction: column; align-items: center; justify-content: center; z-index: 2000; }
+        .panel { background: #333; padding: 20px 30px; border-radius: 10px; text-align: center; border: 2px solid #555; box-shadow: 0 4px 10px rgba(0,0,0,0.5); max-width: 90%; max-height: 90%; overflow-y: auto; }
+        input[type="text"], input[type="password"] { padding: 10px; font-size: 16px; margin: 15px 0; width: 80%; border-radius: 5px; border: 1px solid #ccc; }
+        button { padding: 10px 20px; font-size: 16px; font-weight: bold; cursor: pointer; margin: 5px; border-radius: 5px; border: none; background-color: #007bff; color: white; }
         button:hover { background-color: #0056b3; }
         button:disabled { background-color: #555; cursor: not-allowed; }
         .choice-btn { display: block; width: 100%; margin: 10px 0; background-color: #28a745; }
         .choice-btn:hover { background-color: #218838; }
-
-        .demo-badge {
-            position: fixed; top: 10px; right: 10px;
-            background-color: #ff3333; color: white; padding: 5px 15px;
-            font-size: 16px; font-weight: bold; border-radius: 5px; z-index: 9999;
-            pointer-events: none; box-shadow: 0 2px 4px rgba(0,0,0,0.5);
-        }
-
-        .dpad-container {
-            position: fixed; bottom: 30px; right: 30px;
-            display: grid; grid-template-columns: 60px 60px 60px; grid-template-rows: 60px 60px 60px; gap: 5px;
-            z-index: 1000; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
-        }
-        .dpad-btn {
-            background-color: rgba(255, 255, 255, 0.8); border: 2px solid #555; border-radius: 12px;
-            font-size: 28px; color: #333; display: flex; align-items: center; justify-content: center;
-            cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); touch-action: none;
-        }
-        .dpad-btn:active {
-            background-color: rgba(200, 200, 200, 0.9); box-shadow: 0 2px 3px rgba(0,0,0,0.3); transform: translateY(2px);
-        }
-        .dpad-up { grid-column: 2; grid-row: 1; }
-        .dpad-left { grid-column: 1; grid-row: 2; }
-        .dpad-right { grid-column: 3; grid-row: 2; }
-        .dpad-down { grid-column: 2; grid-row: 3; }
-
+        .demo-badge { position: fixed; top: 10px; right: 10px; background-color: #ff3333; color: white; padding: 5px 15px; font-size: 16px; font-weight: bold; border-radius: 5px; z-index: 9999; pointer-events: none; box-shadow: 0 2px 4px rgba(0,0,0,0.5); }
+        .dpad-container { position: fixed; bottom: 30px; right: 30px; display: grid; grid-template-columns: 60px 60px 60px; grid-template-rows: 60px 60px 60px; gap: 5px; z-index: 1000; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none; }
+        .dpad-btn { background-color: rgba(255, 255, 255, 0.8); border: 2px solid #555; border-radius: 12px; font-size: 28px; color: #333; display: flex; align-items: center; justify-content: center; cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); touch-action: none; }
+        .dpad-btn:active { background-color: rgba(200, 200, 200, 0.9); box-shadow: 0 2px 3px rgba(0,0,0,0.3); transform: translateY(2px); }
+        .dpad-up { grid-column: 2; grid-row: 1; } .dpad-left { grid-column: 1; grid-row: 2; } .dpad-right { grid-column: 3; grid-row: 2; } .dpad-down { grid-column: 2; grid-row: 3; }
         table { width: 100%; border-collapse: collapse; color: white; font-size: 14px; }
         th, td { border: 1px solid #777; padding: 8px; text-align: left; }
         th { background-color: #555; }
+        
+        /* 音声プレイヤー用デザイン */
+        .audio-player { background: #444; padding: 15px; border-radius: 8px; margin-bottom: 15px; text-align: left; border: 1px solid #666; }
+        .audio-controls { display: flex; align-items: center; gap: 15px; margin-bottom: 10px; }
+        #audio-slider { flex-grow: 1; cursor: pointer; }
+        #audio-time { font-family: monospace; font-size: 14px; min-width: 90px; }
+        #audio-speed { padding: 5px; border-radius: 4px; background: #222; color: #fff; border: 1px solid #777; cursor: pointer; }
     </style>
 </head>
 <body>
@@ -104,10 +53,7 @@
         <div id="status-message"></div>
     </div>
 
-    <div id="game-area">
-        <canvas id="map-canvas"></canvas>
-    </div>
-
+    <div id="game-area"><canvas id="map-canvas"></canvas></div>
     <div id="coord-display">X:0 Y:0</div>
     <div id="log-section"></div>
 
@@ -134,14 +80,18 @@
             <p style="color: #ffcc00; font-size: 0.9em;">デモモードのため一部機能を制限しています。</p>
             <input type="text" id="player-id-input" placeholder="プレイヤーIDを入力">
             
-            <div style="text-align: left; background: #444; padding: 10px; border-radius: 5px; font-size: 12px; height: 80px; overflow-y: scroll; margin-top: 10px;">
+            <div style="text-align: left; background: #444; padding: 10px; border-radius: 5px; font-size: 12px; height: 60px; overflow-y: scroll; margin-top: 10px;">
                 <strong>【個人情報の取り扱い及びデータ利用について】</strong><br>
-                本シミュレーションで入力されたIDおよびプレイデータ（軌跡・選択履歴）は、学会デモにおけるシステム動作検証のみを目的として記録されます。<br>
-                個人を特定する情報の収集は行わず、取得したデータを第三者へ提供したり、学会の公式な研究・勉強用資料として二次利用することは一切ありません。
+                本シミュレーションで入力されたIDおよびプレイデータは、システム動作検証のみを目的として記録されます。個人を特定する情報の収集は行わず、第三者への提供や学会の公式な研究資料としての二次利用は一切ありません。
+            </div>
+
+            <div style="text-align: left; background: #5a1a1a; padding: 10px; border-radius: 5px; font-size: 12px; margin-top: 10px; border: 1px solid #ff4444; color: #ffcccc;">
+                <strong>【知的財産権に関する警告】</strong><br>
+                本システムのプログラム、UIデザイン、シミュレーションロジック等に関する一切の権利（著作権および特許出願に関する権利を含む）は開発者に帰属します。無断での複製、改変、リバースエンジニアリング、および本ロジックを流用した類似システムの開発を固く禁じます。現在、関連する知的財産権の保護手続き（出願準備等）を進めております。
             </div>
             
             <label style="font-size: 14px; display: block; margin: 15px 0; cursor: pointer;">
-                <input type="checkbox" id="consent-checkbox"> <strong>上記のデータ利用方針に同意する</strong>
+                <input type="checkbox" id="consent-checkbox"> <strong>上記のデータ利用及び権利保護方針に同意する</strong>
             </label>
 
             <button id="btn-start" disabled>次へ（操作説明）</button>
@@ -182,18 +132,35 @@
                 </table>
             </div>
 
-            <div id="result-comment-area" style="background-color: #e9ecef; color: #333; padding: 15px; border-radius: 5px; margin-bottom: 15px; text-align: left; font-size: 14px; border-left: 5px solid #007bff;">
-                <strong>【管理者からのコメント】</strong><br>
-                シミュレーションお疲れ様でした。<br>
-                初動対応における迅速な判断と、二次災害を防ぐための優先順位付けが重要となります。<br>
-                ご自身の選択履歴と移動軌跡を振り返り、より安全な行動ルートについて検討してみましょう。
-            </div>
+            <div id="result-comment-area" style="background-color: #f8f9fa; color: #333; padding: 20px; border-radius: 8px; margin-bottom: 15px; text-align: left; font-size: 14px; border-left: 6px solid #007bff; box-shadow: 0 2px 5px rgba(0,0,0,0.1);">
+                <h3 style="margin-top: 0; color: #0056b3; border-bottom: 1px solid #ccc; padding-bottom: 8px;">災害訓練を科学する ── 本アプリのねらい</h3>
+                <p>シミュレーションお疲れ様でした。上部に表示されたご自身の行動軌跡とログデータはいかがでしたでしょうか？</p>
+                <p>従来の災害訓練では、<strong>参加者全員の動きを正確に把握し評価するために、参加者の倍以上の評価者が必要</strong>という大きな課題がありました。<br>
+                本システムは、その課題を<strong>「記録のデジタル化」</strong>と<strong>「行動の可視化」</strong>によって解決します。</p>
+                <p>スキマ時間を活用した本アプリでの事前学習により、<strong>ベテランの経験知（暗黙知）を可視化</strong>し、訓練当日までの<strong>レディネス（準備性）</strong>を劇的に向上させます。皆様のこの1回のプレイデータが、最終的に施設のBCP（事業継続計画）の強靭化へと繋がっていきます。</p>
+                </div>
 
-            <audio id="audio-guide" src="./guide.m4a" preload="auto"></audio>
+            <div class="audio-player">
+                <div style="font-size: 14px; font-weight: bold; margin-bottom: 2px; color: #00ccff;">解説音声ガイド</div>
+                <div style="font-size: 11px; color: #bbb; margin-bottom: 10px;">※本音声はAI（人工知能）により生成されています。</div>
+                <div class="audio-controls">
+                    <button id="btn-play-guide" style="margin: 0; background-color: #17a2b8; width: 100px;">▶ 再生</button>
+                    <span id="audio-time">0:00 / 0:00</span>
+                    <select id="audio-speed">
+                        <option value="0.75">0.75x</option>
+                        <option value="1.0" selected>1.0x (標準)</option>
+                        <option value="1.25">1.25x</option>
+                        <option value="1.5">1.5x</option>
+                        <option value="2.0">2.0x</option>
+                    </select>
+                </div>
+                <input type="range" id="audio-slider" min="0" value="0" step="1">
+            </div>
+            
+            <audio id="audio-guide" src="./guide.m4a" preload="metadata"></audio>
 
             <div class="button-area">
                 <button id="btn-save-image" style="background-color: #28a745;">マップ画像を保存</button>
-                <button id="btn-play-guide" style="background-color: #17a2b8;">🔊 音声解説を聞く</button>
                 <button onclick="showEndScreen()">終了する</button>
             </div>
         </div>

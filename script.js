@@ -1,4 +1,4 @@
-// script.js - 完全版（音声ガイド再生機能の追加）
+// script.js - 最終形態（操作ログのトラッキング機能追加）
 
 const GAS_URL = "https://script.google.com/macros/s/AKfycbwFkwNX-YeMomdhC31w3Y5I1jtYtNwZ2slsuI1SHaczBdsg2Z0hcO7zqYbNrfaj00bRPQ/exec";
 
@@ -7,11 +7,9 @@ const MAP_SRC = "./map -demo.bmp";
 const COLLISION_SRC = "./mapdemo - collision.bmp";
 const CSV_SRC = "./data.csv";
 
-// --- 設定値 ---
 const MAX_TIME_LIMIT = 10; 
 const MOVE_FRAMES_PER_MINUTE = 120; 
 
-// --- DOM要素 ---
 const gameArea = document.getElementById('game-area');
 const canvas = document.getElementById('map-canvas');
 const ctx = canvas.getContext('2d');
@@ -32,14 +30,16 @@ const btnStart = document.getElementById('btn-start');
 const tutorialScreen = document.getElementById('tutorial-screen');
 const btnRealStart = document.getElementById('btn-real-start');
 
-// ★音声ガイド用のDOMを追加
+// 音声プレイヤー用のDOM
 const audioGuide = document.getElementById('audio-guide');
 const btnPlayGuide = document.getElementById('btn-play-guide');
+const audioSlider = document.getElementById('audio-slider');
+const audioTime = document.getElementById('audio-time');
+const audioSpeed = document.getElementById('audio-speed');
 
 const collisionCanvas = document.createElement('canvas');
 const collisionCtx = collisionCanvas.getContext('2d');
 
-// --- ゲーム状態 ---
 let mapImage = new Image();
 let collisionImage = new Image();
 let scaleFactor = 1;
@@ -60,7 +60,6 @@ let sessionStartTime = "";
 let eventOpenTime = 0; 
 let hasPlayerMoved = false;
 
-// --- 初期化 ---
 let imagesLoaded = 0;
 mapImage.onerror = () => { alert(`【エラー】\nマップ画像 '${MAP_SRC}' の読み込みに失敗しました。`); };
 collisionImage.onerror = () => { alert(`【エラー】\n衝突マップ '${COLLISION_SRC}' の読み込みに失敗しました。`); };
@@ -76,7 +75,6 @@ function onImageLoad() {
 mapImage.src = MAP_SRC; collisionImage.src = COLLISION_SRC;
 mapImage.onload = onImageLoad; collisionImage.onload = onImageLoad;
 
-// --- 画面リサイズ ---
 function initGameSize() {
     const w = gameArea.clientWidth; const h = gameArea.clientHeight;
     canvas.width = w; canvas.height = h;
@@ -88,7 +86,6 @@ function initGameSize() {
 }
 window.addEventListener('resize', initGameSize);
 
-// --- 入力制御 ---
 window.addEventListener('keydown', e => {
     keys[e.key] = true;
     if(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(e.key)) {
@@ -104,27 +101,84 @@ function bindDpad(btnId, keyName) {
     btn.addEventListener('mousedown', press); btn.addEventListener('mouseup', release); btn.addEventListener('mouseleave', release); 
     btn.addEventListener('touchstart', press, { passive: false }); btn.addEventListener('touchend', release); btn.addEventListener('touchcancel', release);
 }
+
+// --- ★操作のトラッキング（GASへの送信）関数 ---
+function recordActionLog(actionName) {
+    if (!player.id) return;
+    const logEntry = { 
+        type: 'event', // GAS側でイベントと同じシートに書かせるため
+        playerId: player.id, 
+        sessionUUID: sessionUUID, 
+        startTime: sessionStartTime, 
+        timestamp: new Date().toLocaleString(), 
+        elapsedTime: accumulatedTime + "分", 
+        decisionTime: 0, 
+        roomNo: "-", 
+        roomManageId: "-", 
+        location: "【システム操作】", 
+        event: actionName, 
+        choice: "-", 
+        result: "クリック記録" 
+    };
+    logs.push(logEntry); // 管理画面にも残す
+    sendToGAS(logEntry); // リアルタイムでスプレッドシートへ
+}
+
+// --- 音声プレイヤーのロジック ---
+function formatTime(seconds) {
+    const min = Math.floor(seconds / 60);
+    const sec = Math.floor(seconds % 60);
+    return `${min}:${sec.toString().padStart(2, '0')}`;
+}
+
 document.addEventListener('DOMContentLoaded', () => {
     bindDpad('btn-up', 'ArrowUp'); bindDpad('btn-down', 'ArrowDown'); bindDpad('btn-left', 'ArrowLeft'); bindDpad('btn-right', 'ArrowRight');
     
-    // ★音声再生ボタンの動作設定
-    if (btnPlayGuide && audioGuide) {
+    if (audioGuide && btnPlayGuide) {
+        audioGuide.addEventListener('loadedmetadata', () => {
+            audioSlider.max = Math.floor(audioGuide.duration);
+            audioTime.textContent = `0:00 / ${formatTime(audioGuide.duration)}`;
+        });
+
         btnPlayGuide.onclick = () => {
             if (audioGuide.paused) {
                 audioGuide.play();
-                btnPlayGuide.textContent = "⏸️ 音声解説を一時停止";
-                btnPlayGuide.style.backgroundColor = "#dc3545"; // 再生中は赤色にして目立たせる
+                btnPlayGuide.textContent = "⏸ 一時停止";
+                btnPlayGuide.style.backgroundColor = "#dc3545"; 
+                // ★再生ボタンが押されたことをGASへ送信
+                recordActionLog("音声ガイド：再生");
             } else {
                 audioGuide.pause();
-                btnPlayGuide.textContent = "🔊 音声解説の続きを聞く";
-                btnPlayGuide.style.backgroundColor = "#17a2b8"; // 停止中は元の色に戻す
+                btnPlayGuide.textContent = "▶ 再生";
+                btnPlayGuide.style.backgroundColor = "#17a2b8"; 
+                // ★一時停止が押されたことをGASへ送信
+                recordActionLog("音声ガイド：一時停止");
             }
         };
 
-        // 音声が最後まで終わった時の処理
+        audioGuide.addEventListener('timeupdate', () => {
+            audioSlider.value = Math.floor(audioGuide.currentTime);
+            if (!isNaN(audioGuide.duration)) {
+                audioTime.textContent = `${formatTime(audioGuide.currentTime)} / ${formatTime(audioGuide.duration)}`;
+            }
+        });
+
+        audioSlider.addEventListener('input', () => {
+            audioGuide.currentTime = audioSlider.value;
+        });
+
+        if(audioSpeed) {
+            audioSpeed.addEventListener('change', (e) => {
+                audioGuide.playbackRate = parseFloat(e.target.value);
+                // ★倍速が変更されたことをGASへ送信
+                recordActionLog(`音声ガイド：倍速変更 (${e.target.value}x)`);
+            });
+        }
+
         audioGuide.onended = () => {
-            btnPlayGuide.textContent = "🔊 音声解説をもう一度聞く";
+            btnPlayGuide.textContent = "▶ もう一度聞く";
             btnPlayGuide.style.backgroundColor = "#17a2b8";
+            audioGuide.currentTime = 0;
         };
     }
 });
@@ -136,7 +190,6 @@ canvas.addEventListener('mousemove', (e) => {
     debugCoords.textContent = (originalX >= 0 && originalX <= mapImage.width && originalY >= 0 && originalY <= mapImage.height) ? `X:${originalX} Y:${originalY}` : "Outside";
 });
 
-// --- ゲームループ ---
 function gameLoop() { update(); draw(); requestAnimationFrame(gameLoop); }
 
 function update() {
@@ -221,15 +274,19 @@ function updateTimeGauge() {
 }
 function checkTimeLimit() { if (accumulatedTime >= MAX_TIME_LIMIT) { finishGame(); return true; } return false; }
 
-// --- ゲーム終了処理 ---
 function finishGame() {
     isGameRunning = false; eventPopup.style.display = 'none'; if(dpadControls) dpadControls.style.display = 'none'; 
     draw(); 
     const dataURL = canvas.toDataURL("image/jpeg", 0.8);
     const imgContainer = document.getElementById('result-map-image-container'); imgContainer.innerHTML = "";
     const img = document.createElement('img'); img.src = dataURL; img.style.maxWidth = "100%"; img.style.border = "1px solid white"; imgContainer.appendChild(img);
+    
     const saveImgBtn = document.getElementById('btn-save-image');
-    if(saveImgBtn) saveImgBtn.onclick = () => { const link = document.createElement('a'); link.href = dataURL; link.download = `trajectory_${player.id}_${Date.now()}.jpg`; link.click(); };
+    if(saveImgBtn) saveImgBtn.onclick = () => { 
+        // ★画像保存ボタンが押されたことをGASへ送信
+        recordActionLog("マップ画像保存：クリック");
+        const link = document.createElement('a'); link.href = dataURL; link.download = `trajectory_${player.id}_${Date.now()}.jpg`; link.click(); 
+    };
 
     sendImageToGAS(); sendTrajectoryToGAS();
     resultLogBody.innerHTML = "";
@@ -237,22 +294,26 @@ function finishGame() {
 
     const btnArea = resultScreen.querySelector('.button-area'); let oldBtn = document.getElementById('btn-manual-send'); if(oldBtn) oldBtn.remove();
     const manualSendBtn = document.createElement('button'); manualSendBtn.id = 'btn-manual-send'; manualSendBtn.className = 'dl-btn'; manualSendBtn.style.backgroundColor = '#ff9900'; manualSendBtn.textContent = '結果をサーバーに再送信';
-    manualSendBtn.onclick = () => { alert("送信を開始します..."); sendTrajectoryToGAS(); setTimeout(()=>sendImageToGAS(), 1000); };
+    manualSendBtn.onclick = () => { 
+        // ★再送信ボタンが押されたことをGASへ送信
+        recordActionLog("結果サーバー再送信：クリック");
+        alert("送信を開始します..."); sendTrajectoryToGAS(); setTimeout(()=>sendImageToGAS(), 1000); 
+    };
     btnArea.insertBefore(manualSendBtn, btnArea.firstChild);
     resultScreen.style.display = 'flex';
 }
 
 window.showEndScreen = () => { 
-    // ★終了ボタンを押したときに、もし音声が流れていれば止める処理
     if (audioGuide) {
         audioGuide.pause();
-        audioGuide.currentTime = 0; // 再生位置を最初に戻す
+        audioGuide.currentTime = 0; 
     }
+    // ★終了ボタンが押されたことをGASへ送信
+    recordActionLog("終了するボタン：クリック");
     resultScreen.style.display = 'none'; 
     endScreen.style.display = 'flex'; 
 };
 
-// --- CSVパース ---
 function parseCSV(text) {
     const lines = text.trim().split('\n'); roomData = [];
     for (let i = 1; i < lines.length; i++) {
@@ -275,7 +336,6 @@ function parseCSVLine(line) {
     res.push(line.substring(start).replace(/^"|"$/g,'')); return res;
 }
 
-// --- イベント制御 ---
 function checkEvents() {
     if (!hasPlayerMoved || eventPopup.style.display === 'flex') return;
     for (let room of roomData) {
@@ -339,7 +399,6 @@ function sendTrajectoryToGAS() {
     if(navigator.sendBeacon) { navigator.sendBeacon(GAS_URL, blob); } else { fetch(GAS_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify(payload), keepalive: true }); }
 }
 
-// --- 同意チェックとスタート処理のロジック追加 ---
 if (consentCheckbox) {
     consentCheckbox.addEventListener('change', (e) => {
         if (e.target.checked) {
