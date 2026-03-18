@@ -1,4 +1,4 @@
-// script.js - 完全版（当たり判定緩和・ボタン色分け対応）
+// script.js - 完全版（時間制限を10分に変更）
 
 const GAS_URL = "https://script.google.com/macros/s/AKfycbwFkwNX-YeMomdhC31w3Y5I1jtYtNwZ2slsuI1SHaczBdsg2Z0hcO7zqYbNrfaj00bRPQ/exec";
 
@@ -8,7 +8,8 @@ const COLLISION_SRC = "./mapdemo - collision.bmp";
 const CSV_SRC = "./data.csv";
 
 // --- 設定値 ---
-const MAX_TIME_LIMIT = 30; 
+// ★制限時間を30から10に変更
+const MAX_TIME_LIMIT = 10; 
 const MOVE_FRAMES_PER_MINUTE = 120; 
 
 // --- DOM要素 ---
@@ -200,7 +201,6 @@ function recordTrajectoryPoint() {
     });
 }
 
-// ★修正箇所1：狭い通路に入れるよう、当たり判定の範囲(r)を 8 から 2 に変更
 function checkCollision(x, y) {
     if (x < 0 || x > mapImage.width || y < 0 || y > mapImage.height) return true;
     const r = 2; 
@@ -346,7 +346,6 @@ function checkEvents() {
     }
 }
 
-// ★修正箇所2：ボタンの色をそれぞれ青・黄・グレーに設定
 function triggerEvent(room, task) {
     keys = {};
     document.getElementById('event-title').textContent = `場所: ${room.name}`; 
@@ -361,14 +360,11 @@ function triggerEvent(room, task) {
         btn.className = 'choice-btn'; 
         btn.innerHTML = c.text; 
 
-        // 選択肢番号による色分け
         if (index < 3) {
-            // 選択肢1〜3は青色
             btn.style.backgroundColor = '#007bff';
             btn.onmouseover = () => btn.style.backgroundColor = '#0056b3';
             btn.onmouseout = () => btn.style.backgroundColor = '#007bff';
         } else if (index === 3) {
-            // 選択肢4は黄色（文字色は読みやすく黒に）
             btn.style.backgroundColor = '#ffcc00';
             btn.style.color = '#000';
             btn.onmouseover = () => btn.style.backgroundColor = '#e6b800';
@@ -381,7 +377,7 @@ function triggerEvent(room, task) {
     
     const holdBtn = document.createElement('button'); 
     holdBtn.className = 'choice-btn'; 
-    holdBtn.style.backgroundColor = '#777'; // 選択肢5（保留）はグレー
+    holdBtn.style.backgroundColor = '#777';
     holdBtn.textContent = 'この場所以外を探索する（保留）';
     holdBtn.onclick = () => { room.ignoreUntilExit = true; eventPopup.style.display = 'none'; recordLog(room, task, "保留", "この場所以外を探索する"); };
     choicesDiv.appendChild(holdBtn); 

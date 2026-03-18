@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>探索アプリ (Demo)</title>
+    <title>RUG（放射線科初期対応シュミレーションゲーム）</title>
     <style>
         /* --- 全体の基本設定 --- */
         body {
@@ -113,7 +113,7 @@
 
     <div class="status-header">
         <div id="timer-bar"><div id="timer-bar-fill"></div></div>
-        <div id="timer-text">0 / 30 分</div>
+        <div id="timer-text">0 / 10 分</div>
         <div id="status-message"></div>
     </div>
 
@@ -142,8 +142,9 @@
 
     <div id="top-screen" class="overlay-screen">
         <div class="panel">
-            <h1>探索アプリ</h1>
-            <p>プレイヤーIDを入力して開始してください。</p>
+            <h1>RUG（放射線科初期対応シュミレーションゲーム）</h1>
+            <p>プレイヤーID(一文字以上)入力し、開始してください。</p>
+            <p style="color: #ffcc00; font-size: 0.9em;">デモモードのため一部機能を制限しています。</p>
             <input type="text" id="player-id-input" placeholder="プレイヤーIDを入力">
             <br>
             <button id="btn-start">ゲームスタート</button>
