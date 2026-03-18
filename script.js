@@ -1,4 +1,4 @@
-// script.js - 完全版（同意チェック・チュートリアル画面対応）
+// script.js - 完全版（音声ガイド再生機能の追加）
 
 const GAS_URL = "https://script.google.com/macros/s/AKfycbwFkwNX-YeMomdhC31w3Y5I1jtYtNwZ2slsuI1SHaczBdsg2Z0hcO7zqYbNrfaj00bRPQ/exec";
 
@@ -27,11 +27,14 @@ const timerBarFill = document.getElementById('timer-bar-fill');
 const timerText = document.getElementById('timer-text');
 const dpadControls = document.getElementById('dpad-controls');
 
-// ★新規追加DOM
 const consentCheckbox = document.getElementById('consent-checkbox');
 const btnStart = document.getElementById('btn-start');
 const tutorialScreen = document.getElementById('tutorial-screen');
 const btnRealStart = document.getElementById('btn-real-start');
+
+// ★音声ガイド用のDOMを追加
+const audioGuide = document.getElementById('audio-guide');
+const btnPlayGuide = document.getElementById('btn-play-guide');
 
 const collisionCanvas = document.createElement('canvas');
 const collisionCtx = collisionCanvas.getContext('2d');
@@ -103,6 +106,27 @@ function bindDpad(btnId, keyName) {
 }
 document.addEventListener('DOMContentLoaded', () => {
     bindDpad('btn-up', 'ArrowUp'); bindDpad('btn-down', 'ArrowDown'); bindDpad('btn-left', 'ArrowLeft'); bindDpad('btn-right', 'ArrowRight');
+    
+    // ★音声再生ボタンの動作設定
+    if (btnPlayGuide && audioGuide) {
+        btnPlayGuide.onclick = () => {
+            if (audioGuide.paused) {
+                audioGuide.play();
+                btnPlayGuide.textContent = "⏸️ 音声解説を一時停止";
+                btnPlayGuide.style.backgroundColor = "#dc3545"; // 再生中は赤色にして目立たせる
+            } else {
+                audioGuide.pause();
+                btnPlayGuide.textContent = "🔊 音声解説の続きを聞く";
+                btnPlayGuide.style.backgroundColor = "#17a2b8"; // 停止中は元の色に戻す
+            }
+        };
+
+        // 音声が最後まで終わった時の処理
+        audioGuide.onended = () => {
+            btnPlayGuide.textContent = "🔊 音声解説をもう一度聞く";
+            btnPlayGuide.style.backgroundColor = "#17a2b8";
+        };
+    }
 });
 
 canvas.addEventListener('mousemove', (e) => {
@@ -217,7 +241,16 @@ function finishGame() {
     btnArea.insertBefore(manualSendBtn, btnArea.firstChild);
     resultScreen.style.display = 'flex';
 }
-window.showEndScreen = () => { resultScreen.style.display = 'none'; endScreen.style.display = 'flex'; };
+
+window.showEndScreen = () => { 
+    // ★終了ボタンを押したときに、もし音声が流れていれば止める処理
+    if (audioGuide) {
+        audioGuide.pause();
+        audioGuide.currentTime = 0; // 再生位置を最初に戻す
+    }
+    resultScreen.style.display = 'none'; 
+    endScreen.style.display = 'flex'; 
+};
 
 // --- CSVパース ---
 function parseCSV(text) {
@@ -317,17 +350,13 @@ if (consentCheckbox) {
     });
 }
 
-// TOP画面の「次へ」ボタン
 btnStart.onclick = () => {
     const id = playerIdInput.value; 
     if(!id) { alert("IDを入力してください"); return; }
     document.getElementById('top-screen').style.display = 'none';
-    
-    // チュートリアル画面を表示
     tutorialScreen.style.display = 'flex';
 };
 
-// チュートリアル画面の「ゲームを開始する」ボタン
 if (btnRealStart) {
     btnRealStart.onclick = () => {
         player.id = playerIdInput.value; 
@@ -344,7 +373,6 @@ if (btnRealStart) {
     };
 }
 
-// 管理者系
 window.openAdminLogin = () => document.getElementById('admin-login-overlay').style.display = 'flex';
 window.closeAdminLogin = () => document.getElementById('admin-login-overlay').style.display = 'none';
 window.checkAdminPass = () => { if(document.getElementById('admin-pass-input').value === "admin1234") { closeAdminLogin(); renderAdminLogs(); document.getElementById('admin-screen').style.display = 'flex'; } else alert("パスワード不一致"); };
