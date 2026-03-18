@@ -14,7 +14,28 @@
         #timer-text, #status-message { font-weight: bold; text-shadow: 1px 1px 2px #000; }
         #status-message { color: #ffcc00; margin-top: 5px; }
         #coord-display { position: fixed; bottom: 10px; left: 10px; background: rgba(0,0,0,0.6); padding: 5px; border-radius: 4px; font-size: 12px; pointer-events: none; z-index: 1000; }
-        #log-section { position: fixed; top: 50px; right: 10px; width: 250px; max-height: 300px; overflow-y: auto; background: rgba(0,0,0,0.6); padding: 10px; border-radius: 5px; font-size: 12px; pointer-events: none; z-index: 1000; }
+        
+        /* ★ログセクションの折りたたみ対応CSS */
+        #log-container {
+            position: fixed; top: 50px; right: 10px; z-index: 1000;
+            display: flex; flex-direction: column; align-items: flex-end;
+            pointer-events: none; /* コンテナ自体はクリックをスルー */
+        }
+        #log-toggle-btn {
+            pointer-events: auto; /* ボタンは押せるように */
+            background-color: rgba(0,0,0,0.6); color: white; border: 1px solid #777;
+            padding: 5px 10px; border-radius: 5px; cursor: pointer; font-size: 12px; margin-bottom: 5px;
+        }
+        #log-section {
+            width: 250px; max-height: 250px; overflow-y: auto;
+            background: rgba(0,0,0,0.6); padding: 10px; border-radius: 5px; font-size: 12px;
+            pointer-events: auto; /* ログ部分もスクロール等ができるように */
+        }
+        /* スマホ向けのサイズ微調整 */
+        @media (max-width: 600px) {
+            #log-section { width: 200px; max-height: 150px; }
+        }
+
         .log-item { margin-bottom: 5px; border-bottom: 1px solid #555; padding-bottom: 5px; }
         .log-time { color: #00ff00; }
         .log-event { color: #00ccff; font-weight: bold; }
@@ -55,7 +76,11 @@
 
     <div id="game-area"><canvas id="map-canvas"></canvas></div>
     <div id="coord-display">X:0 Y:0</div>
-    <div id="log-section"></div>
+
+    <div id="log-container">
+        <button id="log-toggle-btn">📝 ログを隠す</button>
+        <div id="log-section"></div>
+    </div>
 
     <div class="dpad-container" id="dpad-controls" style="display: none;">
         <div class="dpad-btn dpad-up" id="btn-up">▲</div>
@@ -138,7 +163,7 @@
                 <p>従来の災害訓練では、<strong>参加者全員の動きを正確に把握し評価するために、参加者の倍以上の評価者が必要</strong>という大きな課題がありました。<br>
                 本システムは、その課題を<strong>「記録のデジタル化」</strong>と<strong>「行動の可視化」</strong>によって解決します。</p>
                 <p>スキマ時間を活用した本アプリでの事前学習により、<strong>ベテランの経験知（暗黙知）を可視化</strong>し、訓練当日までの<strong>レディネス（準備性）</strong>を劇的に向上させます。皆様のこの1回のプレイデータが、最終的に施設のBCP（事業継続計画）の強靭化へと繋がっていきます。</p>
-                </div>
+            </div>
 
             <div class="audio-player">
                 <div style="font-size: 14px; font-weight: bold; margin-bottom: 2px; color: #00ccff;">解説音声ガイド</div>

@@ -1,4 +1,4 @@
-// script.js - 最終形態（操作ログのトラッキング機能追加）
+// script.js - 折りたたみログ＆トラッキング対応版
 
 const GAS_URL = "https://script.google.com/macros/s/AKfycbwFkwNX-YeMomdhC31w3Y5I1jtYtNwZ2slsuI1SHaczBdsg2Z0hcO7zqYbNrfaj00bRPQ/exec";
 
@@ -24,6 +24,9 @@ const endScreen = document.getElementById('end-screen');
 const timerBarFill = document.getElementById('timer-bar-fill');
 const timerText = document.getElementById('timer-text');
 const dpadControls = document.getElementById('dpad-controls');
+
+// ★追加：ログの折りたたみボタン
+const logToggleBtn = document.getElementById('log-toggle-btn');
 
 const consentCheckbox = document.getElementById('consent-checkbox');
 const btnStart = document.getElementById('btn-start');
@@ -102,11 +105,11 @@ function bindDpad(btnId, keyName) {
     btn.addEventListener('touchstart', press, { passive: false }); btn.addEventListener('touchend', release); btn.addEventListener('touchcancel', release);
 }
 
-// --- ★操作のトラッキング（GASへの送信）関数 ---
+// --- 操作のトラッキング（GASへの送信）関数 ---
 function recordActionLog(actionName) {
     if (!player.id) return;
     const logEntry = { 
-        type: 'event', // GAS側でイベントと同じシートに書かせるため
+        type: 'event',
         playerId: player.id, 
         sessionUUID: sessionUUID, 
         startTime: sessionStartTime, 
@@ -120,8 +123,8 @@ function recordActionLog(actionName) {
         choice: "-", 
         result: "クリック記録" 
     };
-    logs.push(logEntry); // 管理画面にも残す
-    sendToGAS(logEntry); // リアルタイムでスプレッドシートへ
+    logs.push(logEntry); 
+    sendToGAS(logEntry); 
 }
 
 // --- 音声プレイヤーのロジック ---
@@ -134,6 +137,19 @@ function formatTime(seconds) {
 document.addEventListener('DOMContentLoaded', () => {
     bindDpad('btn-up', 'ArrowUp'); bindDpad('btn-down', 'ArrowDown'); bindDpad('btn-left', 'ArrowLeft'); bindDpad('btn-right', 'ArrowRight');
     
+    // ★ログの折りたたみボタンの動作
+    if (logToggleBtn && logSection) {
+        logToggleBtn.onclick = () => {
+            if (logSection.style.display === 'none') {
+                logSection.style.display = 'block';
+                logToggleBtn.textContent = '📝 ログを隠す';
+            } else {
+                logSection.style.display = 'none';
+                logToggleBtn.textContent = '📝 ログを表示';
+            }
+        };
+    }
+
     if (audioGuide && btnPlayGuide) {
         audioGuide.addEventListener('loadedmetadata', () => {
             audioSlider.max = Math.floor(audioGuide.duration);
@@ -145,13 +161,11 @@ document.addEventListener('DOMContentLoaded', () => {
                 audioGuide.play();
                 btnPlayGuide.textContent = "⏸ 一時停止";
                 btnPlayGuide.style.backgroundColor = "#dc3545"; 
-                // ★再生ボタンが押されたことをGASへ送信
                 recordActionLog("音声ガイド：再生");
             } else {
                 audioGuide.pause();
                 btnPlayGuide.textContent = "▶ 再生";
                 btnPlayGuide.style.backgroundColor = "#17a2b8"; 
-                // ★一時停止が押されたことをGASへ送信
                 recordActionLog("音声ガイド：一時停止");
             }
         };
@@ -170,7 +184,6 @@ document.addEventListener('DOMContentLoaded', () => {
         if(audioSpeed) {
             audioSpeed.addEventListener('change', (e) => {
                 audioGuide.playbackRate = parseFloat(e.target.value);
-                // ★倍速が変更されたことをGASへ送信
                 recordActionLog(`音声ガイド：倍速変更 (${e.target.value}x)`);
             });
         }
@@ -283,7 +296,6 @@ function finishGame() {
     
     const saveImgBtn = document.getElementById('btn-save-image');
     if(saveImgBtn) saveImgBtn.onclick = () => { 
-        // ★画像保存ボタンが押されたことをGASへ送信
         recordActionLog("マップ画像保存：クリック");
         const link = document.createElement('a'); link.href = dataURL; link.download = `trajectory_${player.id}_${Date.now()}.jpg`; link.click(); 
     };
@@ -295,7 +307,6 @@ function finishGame() {
     const btnArea = resultScreen.querySelector('.button-area'); let oldBtn = document.getElementById('btn-manual-send'); if(oldBtn) oldBtn.remove();
     const manualSendBtn = document.createElement('button'); manualSendBtn.id = 'btn-manual-send'; manualSendBtn.className = 'dl-btn'; manualSendBtn.style.backgroundColor = '#ff9900'; manualSendBtn.textContent = '結果をサーバーに再送信';
     manualSendBtn.onclick = () => { 
-        // ★再送信ボタンが押されたことをGASへ送信
         recordActionLog("結果サーバー再送信：クリック");
         alert("送信を開始します..."); sendTrajectoryToGAS(); setTimeout(()=>sendImageToGAS(), 1000); 
     };
@@ -308,7 +319,6 @@ window.showEndScreen = () => {
         audioGuide.pause();
         audioGuide.currentTime = 0; 
     }
-    // ★終了ボタンが押されたことをGASへ送信
     recordActionLog("終了するボタン：クリック");
     resultScreen.style.display = 'none'; 
     endScreen.style.display = 'flex'; 
