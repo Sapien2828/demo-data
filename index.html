@@ -1,279 +1,209 @@
 <!DOCTYPE html>
 <html lang="ja">
 <head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-<title>放射線科発災30分間シュミレーション</title>
-<style>
-    /* 全体レイアウト：Flexboxで左右分割 */
-    body {
-        background-color: #1a1a1a;
-        color: white;
-        font-family: 'Meiryo', 'Hiragino Kaku Gothic ProN', 'Segoe UI', sans-serif;
-        margin: 0;
-        height: 100vh;
-        width: 100vw;
-        overflow: hidden;
-        display: flex;
-        justify-content: center;
-        align-items: center;
-    }
-
-    #main-container { display: flex; width: 100%; height: 100%; max-width: 1600px; }
-
-    /* 左側：ゲーム画面 */
-    #game-area {
-        flex: 3; position: relative; background-color: #000; overflow: hidden; border-right: 2px solid #444;
-    }
-    canvas { display: block; }
-
-    /* 右側：情報パネル */
-    #info-panel {
-        flex: 1; background-color: #222; display: flex; flex-direction: column; padding: 20px; box-sizing: border-box; overflow-y: auto;
-    }
-    #timer-section { margin-bottom: 30px; text-align: center; }
-    #timer-bar-bg { width: 100%; height: 25px; background: #444; border: 2px solid #fff; border-radius: 5px; position: relative; margin-top: 10px; }
-    #timer-bar-fill { width: 0%; height: 100%; background: #00ff00; transition: width 0.3s, background-color 0.3s; }
-    #timer-text { font-size: 1.2em; font-weight: bold; margin-top: 5px; color: #fff; }
-    #status-section { margin-bottom: 20px; padding: 15px; background: #333; border-radius: 8px; border: 1px solid #555; }
-    #status-message { font-size: 1.1em; font-weight: bold; color: yellow; min-height: 1.2em; }
-    #coord-display { font-size: 0.9em; color: #aaa; margin-top: 5px; text-align: right; }
-    #log-section { flex-grow: 1; background: #000; border: 1px solid #555; padding: 10px; overflow-y: auto; font-family: monospace; font-size: 0.9em; }
-    .log-item { border-bottom: 1px solid #333; padding: 5px 0; }
-    .log-time { color: #888; font-size: 0.8em; }
-    .log-event { color: #5bc0de; }
-
-    /* --- トップ画面 --- */
-    #top-screen {
-        position: absolute; top: 0; left: 0; width: 100%; height: 100%;
-        background: linear-gradient(to bottom, #111, #333);
-        z-index: 3000;
-        display: flex; flex-direction: column; align-items: center; justify-content: center;
-    }
-    #top-title {
-        font-size: 3em; color: #ffd700; text-shadow: 4px 4px 0 #000; 
-        margin-bottom: 30px; letter-spacing: 2px; text-align: center;
-    }
-    #player-input-container { margin-bottom: 20px; text-align: center; }
-    #player-id-input {
-        padding: 10px; font-size: 1.2em; border-radius: 5px; border: none; text-align: center; width: 250px;
-        font-family: 'Meiryo', sans-serif;
-    }
-    .start-btn, .dl-btn {
-        padding: 15px 40px; font-size: 1.5em; 
-        background-color: #d9534f; color: white; border: none; border-radius: 50px;
-        cursor: pointer; margin: 10px; transition: transform 0.2s;
-        font-family: 'Meiryo', sans-serif;
-    }
-    .start-btn:hover { transform: scale(1.05); background-color: #c9302c; }
-    .dl-btn { font-size: 1em; padding: 10px 20px; background-color: #5bc0de; }
-    .btn-exit { background-color: #555; }
-    .btn-retry { background-color: #5cb85c; }
-    .btn-finish { background-color: #333; border: 1px solid #777; }
-    .btn-img-save { background-color: #e67e22; }
-
-    /* --- オーバーレイ --- */
-    .overlay-screen {
-        display: none; position: absolute; top: 0; left: 0; 
-        width: 100%; height: 100%; background: rgba(0,0,0,0.9); 
-        z-index: 2000; align-items: center; justify-content: center;
-    }
-    .popup-content, .login-box {
-        background: #333; padding: 25px; border-radius: 10px; 
-        max-width: 600px; width: 90%; text-align: center; border: 2px solid #777;
-        max-height: 90vh; overflow-y: auto; 
-    }
-    .choice-btn {
-        display: block; width: 100%; margin: 10px 0; padding: 12px;
-        background: #444; color: white; border: 1px solid #777; cursor: pointer;
-        text-align: left; transition: background 0.2s;
-        font-family: 'Meiryo', sans-serif;
-    }
-    .choice-btn:hover { background: #555; }
-
-    /* テーブル */
-    .table-container { max-height: 300px; overflow-y: auto; margin-top: 10px; }
-    table { width: 100%; border-collapse: collapse; font-size: 0.9em; }
-    th, td { border: 1px solid #555; padding: 5px; text-align: left; color: white; }
-    th { background-color: #444; position: sticky; top: 0; }
-
-    #result-content { max-width: 800px; }
-    
-    #end-screen {
-        display: none; flex-direction: column; align-items: center; justify-content: center;
-        width: 100%; height: 100%; background: #000; z-index: 4000; position: absolute; top: 0; left: 0;
-    }
-
-    /* 結果画像の表示エリア */
-    #result-map-image-container {
-        margin: 15px 0; border: 2px solid #555; text-align: center;
-    }
-    #result-map-image-container img {
-        max-width: 100%; height: auto; display: block; margin: 0 auto;
-    }
-
-/* デモモード用バッジのスタイル */
-        .demo-badge {
-            position: fixed;
-            top: 10px;
-            right: 10px;
-            background-color: #ff3333;
-            color: white;
-            padding: 5px 15px;
-            font-size: 18px;
-            font-weight: bold;
-            border-radius: 5px;
-            z-index: 9999;
-            pointer-events: none;
-            box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>探索アプリ (Demo)</title>
+    <style>
+        /* --- 全体の基本設定 --- */
+        body {
+            margin: 0; padding: 0;
+            background-color: #222; color: #fff;
+            font-family: 'Meiryo', sans-serif;
+            overflow: hidden; /* 画面スクロール防止 */
         }
 
-</style>
-/* 十字キー（D-Pad）のスタイル */
+        /* --- ゲーム画面 --- */
+        #game-area {
+            position: relative; width: 100vw; height: 100vh;
+        }
+        canvas { display: block; }
+
+        /* --- ヘッダー・ステータス周り --- */
+        .status-header {
+            position: fixed; top: 10px; left: 10px; z-index: 1000;
+            pointer-events: none; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 8px;
+        }
+        #timer-bar {
+            width: 200px; height: 15px; background: #555; border: 2px solid #fff; border-radius: 10px; overflow: hidden; margin-bottom: 5px;
+        }
+        #timer-bar-fill {
+            width: 0%; height: 100%; background: #00ff00; transition: width 0.3s;
+        }
+        #timer-text, #status-message { font-weight: bold; text-shadow: 1px 1px 2px #000; }
+        #status-message { color: #ffcc00; margin-top: 5px; }
+
+        /* --- 座標デバッグ表示 --- */
+        #coord-display {
+            position: fixed; bottom: 10px; left: 10px;
+            background: rgba(0,0,0,0.6); padding: 5px; border-radius: 4px; font-size: 12px; pointer-events: none; z-index: 1000;
+        }
+
+        /* --- ログ表示 --- */
+        #log-section {
+            position: fixed; top: 50px; right: 10px;
+            width: 250px; max-height: 300px; overflow-y: auto;
+            background: rgba(0,0,0,0.6); padding: 10px; border-radius: 5px; font-size: 12px; pointer-events: none; z-index: 1000;
+        }
+        .log-item { margin-bottom: 5px; border-bottom: 1px solid #555; padding-bottom: 5px; }
+        .log-time { color: #00ff00; }
+        .log-event { color: #00ccff; font-weight: bold; }
+
+        /* --- 各種画面の共通パネル設定 --- */
+        .overlay-screen {
+            position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
+            background: rgba(0,0,0,0.85); display: flex; flex-direction: column;
+            align-items: center; justify-content: center; z-index: 2000;
+        }
+        .panel {
+            background: #333; padding: 20px 30px; border-radius: 10px;
+            text-align: center; border: 2px solid #555; box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            max-width: 90%; max-height: 90%; overflow-y: auto;
+        }
+        input[type="text"], input[type="password"] {
+            padding: 10px; font-size: 16px; margin: 15px 0; width: 80%;
+            border-radius: 5px; border: 1px solid #ccc;
+        }
+        button {
+            padding: 10px 20px; font-size: 16px; font-weight: bold; cursor: pointer;
+            margin: 5px; border-radius: 5px; border: none; background-color: #007bff; color: white;
+        }
+        button:hover { background-color: #0056b3; }
+        .choice-btn {
+            display: block; width: 100%; margin: 10px 0; background-color: #28a745;
+        }
+        .choice-btn:hover { background-color: #218838; }
+
+        /* --- デモモードバッジ --- */
+        .demo-badge {
+            position: fixed; top: 10px; right: 10px;
+            background-color: #ff3333; color: white; padding: 5px 15px;
+            font-size: 16px; font-weight: bold; border-radius: 5px; z-index: 9999;
+            pointer-events: none; box-shadow: 0 2px 4px rgba(0,0,0,0.5);
+        }
+
+        /* --- 十字キー（D-Pad） --- */
         .dpad-container {
-            position: fixed;
-            bottom: 30px; /* 下からの余白 */
-            right: 30px;  /* 右からの余白 */
-            display: grid;
-            grid-template-columns: 60px 60px 60px;
-            grid-template-rows: 60px 60px 60px;
-            gap: 5px;
-            z-index: 1000;
-            /* スマホ操作時のテキスト選択やハイライトを無効化 */
-            user-select: none;
-            -webkit-user-select: none;
-            -webkit-touch-callout: none;
+            position: fixed; bottom: 30px; right: 30px;
+            display: grid; grid-template-columns: 60px 60px 60px; grid-template-rows: 60px 60px 60px; gap: 5px;
+            z-index: 1000; user-select: none; -webkit-user-select: none; -webkit-touch-callout: none;
         }
         .dpad-btn {
-            background-color: rgba(255, 255, 255, 0.8);
-            border: 2px solid #555;
-            border-radius: 12px;
-            font-size: 28px;
-            display: flex;
-            align-items: center;
-            justify-content: center;
-            cursor: pointer;
-            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
-            touch-action: none; /* スマホでの画面スクロールを強制ブロック */
+            background-color: rgba(255, 255, 255, 0.8); border: 2px solid #555; border-radius: 12px;
+            font-size: 28px; color: #333; display: flex; align-items: center; justify-content: center;
+            cursor: pointer; box-shadow: 0 4px 6px rgba(0,0,0,0.3); touch-action: none;
         }
         .dpad-btn:active {
-            background-color: rgba(200, 200, 200, 0.9);
-            box-shadow: 0 2px 3px rgba(0,0,0,0.3);
-            transform: translateY(2px);
+            background-color: rgba(200, 200, 200, 0.9); box-shadow: 0 2px 3px rgba(0,0,0,0.3); transform: translateY(2px);
         }
-        /* 各ボタンの配置（グリッドレイアウト） */
         .dpad-up { grid-column: 2; grid-row: 1; }
         .dpad-left { grid-column: 1; grid-row: 2; }
         .dpad-right { grid-column: 3; grid-row: 2; }
         .dpad-down { grid-column: 2; grid-row: 3; }
+
+        /* --- テーブル設定 --- */
+        table { width: 100%; border-collapse: collapse; color: white; font-size: 14px; }
+        th, td { border: 1px solid #777; padding: 8px; text-align: left; }
+        th { background-color: #555; }
+    </style>
 </head>
 <body>
-    <div class="demo-badge">DEMO MODE</div> 
 
-    <div id="game-container">
+    <div class="demo-badge">DEMO MODE</div>
 
-    <div id="main-container">
-        <div id="game-area">
-            <canvas id="map-canvas"></canvas>
-        </div>
-        <div id="info-panel">
-            <div id="timer-section">
-                <div>災害対応経過時間</div>
-                <div id="timer-bar-bg"><div id="timer-bar-fill"></div></div>
-                <div id="timer-text">0 / 30 分</div>
-            </div>
-            <div id="status-section">
-                <div id="status-message">待機中...</div>
-                <div id="coord-display">X:0 Y:0</div>
-            </div>
-            <div style="font-weight:bold; margin-bottom:5px;">行動ログ</div>
-            <div id="log-section"></div>
-            <div style="margin-top:20px; text-align:center;">
-                 <button class="dl-btn btn-exit" onclick="openAdminLogin()">管理者メニュー</button>
-            </div>
-        </div>
+    <div class="status-header">
+        <div id="timer-bar"><div id="timer-bar-fill"></div></div>
+        <div id="timer-text">0 / 30 分</div>
+        <div id="status-message"></div>
     </div>
 
-    <div id="top-screen">
-        <h1 id="top-title">放射線科発災30分間<br>シュミレーション</h1>
-        <div id="player-input-container">
-            <input type="text" id="player-id-input" placeholder="職員ID / 氏名を入力">
-        </div>
-        <button class="start-btn" id="btn-start">訓練開始</button>
+    <div id="game-area">
+        <canvas id="map-canvas"></canvas>
     </div>
 
-    <div id="event-popup" class="overlay-screen">
-        <div class="popup-content">
-            <h2 id="event-title" style="color:#f0ad4e;">イベント発生</h2>
-            <div id="event-desc" style="margin-bottom:20px; text-align:left; line-height:1.5;">詳細...</div>
-            <div id="event-choices"></div>
-            <button id="close-btn" class="choice-btn" style="background:#555; text-align:center; margin-top:20px; display:none;">閉じる</button>
-        </div>
-    </div>
+    <div id="coord-display">X:0 Y:0</div>
+    <div id="log-section"></div>
 
-    <div id="result-screen" class="overlay-screen">
-        <div class="popup-content" id="result-content">
-            <div style="font-size:1.5em; color:#5bc0de; margin-bottom:10px;">訓練終了（制限時間到達）</div>
-            <p>30分が経過しました。<br>お疲れ様でした。</p>
-            <div id="result-map-image-container"></div>
-            <div class="table-container">
-                <table id="result-table">
-                    <thead><tr><th>時間</th><th>場所</th><th>イベント</th><th>選択</th><th>結果</th></tr></thead>
-                    <tbody id="result-log-body"></tbody>
-                </table>
-            </div>
-            <div class="button-area" style="margin-top:20px;">
-                <button class="dl-btn btn-img-save" id="btn-save-image">マップ画像を保存</button>
-                <button class="dl-btn" onclick="downloadAllLogs()">ログCSV保存</button>
-                <button class="dl-btn btn-retry" onclick="location.reload()">最初から</button>
-                <button class="dl-btn btn-finish" onclick="showEndScreen()">終了する</button>
-            </div>
-        </div>
-    </div>
-
-    <div id="end-screen">
-        <h1 style="color:white;">お疲れ様でした。</h1>
-        <p style="color:#aaa;">ブラウザを閉じて終了してください。</p>
-    </div>
-
-    <div id="admin-login-overlay" class="overlay-screen">
-        <div class="login-box">
-            <h2>管理者ログイン</h2>
-            <input type="password" id="admin-pass-input" placeholder="Password" style="padding:10px; font-size:1.2em;">
-            <br><br>
-            <button class="dl-btn" onclick="checkAdminPass()">ログイン</button>
-            <button class="dl-btn btn-exit" onclick="closeAdminLogin()">キャンセル</button>
-        </div>
-    </div>
-
-    <div id="admin-screen" class="overlay-screen">
-        <div class="popup-content" style="max-width:900px;">
-            <h2>全ログ閲覧</h2>
-            <div class="table-container">
-                <table id="admin-table">
-                    <thead><tr><th>ID</th><th>日時</th><th>経過</th><th>場所</th><th>イベント</th><th>選択</th><th>結果</th></tr></thead>
-                    <tbody id="admin-log-body"></tbody>
-                </table>
-            </div>
-            <div style="margin-top:20px;">
-                <button class="dl-btn" onclick="downloadAllLogs()">CSV保存</button>
-                <button class="dl-btn btn-path" onclick="downloadPathLogs()">軌跡CSV保存</button>
-                <button class="dl-btn btn-exit" onclick="clearAllLogs()">ログ削除</button>
-                <button class="dl-btn btn-exit" onclick="closeAdminScreen()">戻る</button>
-            </div>
-        </div>
-    </div>
-<div class="dpad-container" id="dpad-controls" style="display: none;">
+    <div class="dpad-container" id="dpad-controls" style="display: none;">
         <div class="dpad-btn dpad-up" id="btn-up">▲</div>
         <div class="dpad-btn dpad-left" id="btn-left">◀</div>
         <div class="dpad-btn dpad-right" id="btn-right">▶</div>
         <div class="dpad-btn dpad-down" id="btn-down">▼</div>
     </div>
 
+    <div id="event-popup" class="overlay-screen" style="display: none;">
+        <div class="panel" style="max-width: 400px; color: black; background: white;">
+            <h2 id="event-title"></h2>
+            <p id="event-desc"></p>
+            <div id="event-choices"></div>
+            <button id="close-btn" style="display:none; width: 100%; background-color:#6c757d;">確認</button>
+        </div>
+    </div>
 
+    <div id="top-screen" class="overlay-screen">
+        <div class="panel">
+            <h1>探索アプリ</h1>
+            <p>プレイヤーIDを入力して開始してください。</p>
+            <input type="text" id="player-id-input" placeholder="プレイヤーIDを入力">
+            <br>
+            <button id="btn-start">ゲームスタート</button>
+            <br><br>
+            <button onclick="openAdminLogin()" style="background-color: #6c757d; font-size: 12px; margin-top: 20px;">管理者ログイン</button>
+        </div>
+    </div>
 
+    <div id="result-screen" class="overlay-screen" style="display: none;">
+        <div class="panel" style="width: 80%; max-width: 800px;">
+            <h2>シミュレーション結果</h2>
+            <div id="result-map-image-container" style="margin-bottom: 15px; border: 1px solid #777;"></div>
+            <div style="max-height: 200px; overflow-y: auto; margin-bottom: 15px;">
+                <table id="result-table">
+                    <thead><tr><th>経過時間</th><th>場所</th><th>イベント</th><th>選択</th><th>結果</th></tr></thead>
+                    <tbody id="result-log-body"></tbody>
+                </table>
+            </div>
+            <div class="button-area">
+                <button id="btn-save-image" style="background-color: #28a745;">マップ画像を保存</button>
+                <button onclick="showEndScreen()">終了する</button>
+            </div>
+        </div>
+    </div>
 
+    <div id="end-screen" class="overlay-screen" style="display: none;">
+        <div class="panel">
+            <h2>プレイありがとうございました</h2>
+            <p>このタブを閉じて終了してください。</p>
+        </div>
+    </div>
 
-    <script src="script.js"></script>
+    <div id="admin-login-overlay" class="overlay-screen" style="display: none;">
+        <div class="panel">
+            <h3>管理者ログイン</h3>
+            <input type="password" id="admin-pass-input" placeholder="パスワード">
+            <br>
+            <button onclick="checkAdminPass()">ログイン</button>
+            <button onclick="closeAdminLogin()" style="background-color: #6c757d;">キャンセル</button>
+        </div>
+    </div>
+
+    <div id="admin-screen" class="overlay-screen" style="display: none;">
+        <div class="panel" style="width: 90%; max-width: 1000px;">
+            <h2>管理者画面</h2>
+            <div style="margin-bottom: 15px;">
+                <button onclick="downloadAllLogs()">イベントログ(CSV)ダウンロード</button>
+                <button onclick="downloadPathLogs()" style="background-color: #17a2b8;">軌跡ログ(CSV)ダウンロード</button>
+                <button onclick="clearAllLogs()" style="background-color: #dc3545;">全ログ消去</button>
+                <button onclick="closeAdminScreen()" style="background-color: #6c757d;">閉じる</button>
+            </div>
+            <div style="max-height: 300px; overflow-y: auto;">
+                <table id="admin-table">
+                    <thead><tr></tr></thead>
+                    <tbody id="admin-log-body"></tbody>
+                </table>
+            </div>
+        </div>
+    </div>
+
+    <script src="./script.js"></script>
 </body>
 </html>
