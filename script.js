@@ -1,4 +1,4 @@
-// script.js - 完全版（十字キー追加・エラー検知機能付き）
+// script.js - 完全版（当たり判定緩和・ボタン色分け対応）
 
 const GAS_URL = "https://script.google.com/macros/s/AKfycbwFkwNX-YeMomdhC31w3Y5I1jtYtNwZ2slsuI1SHaczBdsg2Z0hcO7zqYbNrfaj00bRPQ/exec";
 
@@ -51,16 +51,11 @@ let sessionStartTime = "";
 let eventOpenTime = 0; 
 let hasPlayerMoved = false;
 
-// --- 初期化とエラー検知（SE的アプローチ） ---
+// --- 初期化とエラー検知 ---
 let imagesLoaded = 0;
 
-// ★画像が読み込めなかった時のエラー警告機能を追加
-mapImage.onerror = () => {
-    alert(`【システムエラー】\nマップ画像 '${MAP_SRC}' の読み込みに失敗しました。\nファイル名が完全に一致しているか確認してください。`);
-};
-collisionImage.onerror = () => {
-    alert(`【システムエラー】\n衝突判定マップ '${COLLISION_SRC}' の読み込みに失敗しました。\nファイル名が完全に一致しているか確認してください。`);
-};
+mapImage.onerror = () => { alert(`【システムエラー】\nマップ画像 '${MAP_SRC}' の読み込みに失敗しました。\nファイル名が完全に一致しているか確認してください。`); };
+collisionImage.onerror = () => { alert(`【システムエラー】\n衝突判定マップ '${COLLISION_SRC}' の読み込みに失敗しました。\nファイル名が完全に一致しているか確認してください。`); };
 
 function onImageLoad() {
     imagesLoaded++;
@@ -101,7 +96,6 @@ window.addEventListener('resize', initGameSize);
 window.addEventListener('keydown', e => {
     keys[e.key] = true;
     if(["ArrowUp", "ArrowDown", "ArrowLeft", "ArrowRight", " "].includes(e.key)) {
-        // ★テキストボックス入力中はスクロール防止を無効化する処理を追加
         if(document.activeElement !== playerIdInput) {
             e.preventDefault();
         }
@@ -113,10 +107,8 @@ window.addEventListener('keyup', e => keys[e.key] = false);
 function bindDpad(btnId, keyName) {
     const btn = document.getElementById(btnId);
     if (!btn) return;
-
     const press = (e) => { e.preventDefault(); keys[keyName] = true; };
     const release = (e) => { e.preventDefault(); keys[keyName] = false; };
-
     btn.addEventListener('mousedown', press);
     btn.addEventListener('mouseup', release);
     btn.addEventListener('mouseleave', release); 
@@ -208,9 +200,10 @@ function recordTrajectoryPoint() {
     });
 }
 
+// ★修正箇所1：狭い通路に入れるよう、当たり判定の範囲(r)を 8 から 2 に変更
 function checkCollision(x, y) {
     if (x < 0 || x > mapImage.width || y < 0 || y > mapImage.height) return true;
-    const r = 8;
+    const r = 2; 
     const checkPoints = [
         { px: x, py: y }, { px: x - r, py: y }, { px: x + r, py: y },
         { px: x, py: y - r }, { px: x, py: y + r }
@@ -353,15 +346,48 @@ function checkEvents() {
     }
 }
 
+// ★修正箇所2：ボタンの色をそれぞれ青・黄・グレーに設定
 function triggerEvent(room, task) {
     keys = {};
-    document.getElementById('event-title').textContent = `場所: ${room.name}`; document.getElementById('event-desc').innerHTML = `<strong>${task.name}</strong><br>${task.description}`;
+    document.getElementById('event-title').textContent = `場所: ${room.name}`; 
+    document.getElementById('event-desc').innerHTML = `<strong>${task.name}</strong><br>${task.description}`;
     eventOpenTime = Date.now();
-    const choicesDiv = document.getElementById('event-choices'); choicesDiv.innerHTML = "";
-    task.choices.forEach((c, index) => { const btn = document.createElement('button'); btn.className = 'choice-btn'; btn.innerHTML = c.text; btn.onclick = () => resolveEvent(room, task, c, index); choicesDiv.appendChild(btn); });
-    const holdBtn = document.createElement('button'); holdBtn.className = 'choice-btn'; holdBtn.style.backgroundColor = '#777'; holdBtn.textContent = 'この場所以外を探索する（保留）';
+    
+    const choicesDiv = document.getElementById('event-choices'); 
+    choicesDiv.innerHTML = "";
+    
+    task.choices.forEach((c, index) => { 
+        const btn = document.createElement('button'); 
+        btn.className = 'choice-btn'; 
+        btn.innerHTML = c.text; 
+
+        // 選択肢番号による色分け
+        if (index < 3) {
+            // 選択肢1〜3は青色
+            btn.style.backgroundColor = '#007bff';
+            btn.onmouseover = () => btn.style.backgroundColor = '#0056b3';
+            btn.onmouseout = () => btn.style.backgroundColor = '#007bff';
+        } else if (index === 3) {
+            // 選択肢4は黄色（文字色は読みやすく黒に）
+            btn.style.backgroundColor = '#ffcc00';
+            btn.style.color = '#000';
+            btn.onmouseover = () => btn.style.backgroundColor = '#e6b800';
+            btn.onmouseout = () => btn.style.backgroundColor = '#ffcc00';
+        }
+
+        btn.onclick = () => resolveEvent(room, task, c, index); 
+        choicesDiv.appendChild(btn); 
+    });
+    
+    const holdBtn = document.createElement('button'); 
+    holdBtn.className = 'choice-btn'; 
+    holdBtn.style.backgroundColor = '#777'; // 選択肢5（保留）はグレー
+    holdBtn.textContent = 'この場所以外を探索する（保留）';
     holdBtn.onclick = () => { room.ignoreUntilExit = true; eventPopup.style.display = 'none'; recordLog(room, task, "保留", "この場所以外を探索する"); };
-    choicesDiv.appendChild(holdBtn); document.getElementById('close-btn').style.display = 'none'; eventPopup.style.display = 'flex';
+    choicesDiv.appendChild(holdBtn); 
+    
+    document.getElementById('close-btn').style.display = 'none'; 
+    eventPopup.style.display = 'flex';
 }
 
 function resolveEvent(room, task, choice, choiceIndex) {
@@ -385,7 +411,6 @@ function addLogToScreen(location, event, choice, duration) {
     logSection.prepend(div);
 }
 
-// ★通信エラー箇所の修正
 function sendToGAS(data) { fetch(GAS_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify(data), keepalive: true }).catch(e=>console.error(e)); }
 function sendImageToGAS() { try { fetch(GAS_URL, { method: 'POST', mode: 'no-cors', headers: { 'Content-Type': 'text/plain' }, body: JSON.stringify({ type: 'image', playerId: player.id, sessionUUID: sessionUUID, startTime: sessionStartTime, image: canvas.toDataURL("image/jpeg", 0.7).split("base64,")[1] }), keepalive: true }); } catch (e) {} }
 function sendTrajectoryToGAS() {
