@@ -10,16 +10,12 @@
             margin: 0; padding: 0;
             background-color: #222; color: #fff;
             font-family: 'Meiryo', sans-serif;
-            overflow: hidden; /* 画面スクロール防止 */
+            overflow: hidden; 
         }
 
-        /* --- ゲーム画面 --- */
-        #game-area {
-            position: relative; width: 100vw; height: 100vh;
-        }
+        #game-area { position: relative; width: 100vw; height: 100vh; }
         canvas { display: block; }
 
-        /* --- ヘッダー・ステータス周り --- */
         .status-header {
             position: fixed; top: 10px; left: 10px; z-index: 1000;
             pointer-events: none; background: rgba(0,0,0,0.5); padding: 10px; border-radius: 8px;
@@ -27,19 +23,15 @@
         #timer-bar {
             width: 200px; height: 15px; background: #555; border: 2px solid #fff; border-radius: 10px; overflow: hidden; margin-bottom: 5px;
         }
-        #timer-bar-fill {
-            width: 0%; height: 100%; background: #00ff00; transition: width 0.3s;
-        }
+        #timer-bar-fill { width: 0%; height: 100%; background: #00ff00; transition: width 0.3s; }
         #timer-text, #status-message { font-weight: bold; text-shadow: 1px 1px 2px #000; }
         #status-message { color: #ffcc00; margin-top: 5px; }
 
-        /* --- 座標デバッグ表示 --- */
         #coord-display {
             position: fixed; bottom: 10px; left: 10px;
             background: rgba(0,0,0,0.6); padding: 5px; border-radius: 4px; font-size: 12px; pointer-events: none; z-index: 1000;
         }
 
-        /* --- ログ表示 --- */
         #log-section {
             position: fixed; top: 50px; right: 10px;
             width: 250px; max-height: 300px; overflow-y: auto;
@@ -49,7 +41,6 @@
         .log-time { color: #00ff00; }
         .log-event { color: #00ccff; font-weight: bold; }
 
-        /* --- 各種画面の共通パネル設定 --- */
         .overlay-screen {
             position: fixed; top: 0; left: 0; width: 100vw; height: 100vh;
             background: rgba(0,0,0,0.85); display: flex; flex-direction: column;
@@ -69,12 +60,10 @@
             margin: 5px; border-radius: 5px; border: none; background-color: #007bff; color: white;
         }
         button:hover { background-color: #0056b3; }
-        .choice-btn {
-            display: block; width: 100%; margin: 10px 0; background-color: #28a745;
-        }
+        button:disabled { background-color: #555; cursor: not-allowed; }
+        .choice-btn { display: block; width: 100%; margin: 10px 0; background-color: #28a745; }
         .choice-btn:hover { background-color: #218838; }
 
-        /* --- デモモードバッジ --- */
         .demo-badge {
             position: fixed; top: 10px; right: 10px;
             background-color: #ff3333; color: white; padding: 5px 15px;
@@ -82,7 +71,6 @@
             pointer-events: none; box-shadow: 0 2px 4px rgba(0,0,0,0.5);
         }
 
-        /* --- 十字キー（D-Pad） --- */
         .dpad-container {
             position: fixed; bottom: 30px; right: 30px;
             display: grid; grid-template-columns: 60px 60px 60px; grid-template-rows: 60px 60px 60px; gap: 5px;
@@ -101,7 +89,6 @@
         .dpad-right { grid-column: 3; grid-row: 2; }
         .dpad-down { grid-column: 2; grid-row: 3; }
 
-        /* --- テーブル設定 --- */
         table { width: 100%; border-collapse: collapse; color: white; font-size: 14px; }
         th, td { border: 1px solid #777; padding: 8px; text-align: left; }
         th { background-color: #555; }
@@ -141,15 +128,45 @@
     </div>
 
     <div id="top-screen" class="overlay-screen">
-        <div class="panel">
+        <div class="panel" style="max-width: 600px;">
             <h1>RUG（放射線科初期対応シュミレーションゲーム）</h1>
             <p>プレイヤーID(一文字以上)入力し、開始してください。</p>
             <p style="color: #ffcc00; font-size: 0.9em;">デモモードのため一部機能を制限しています。</p>
             <input type="text" id="player-id-input" placeholder="プレイヤーIDを入力">
-            <br>
-            <button id="btn-start">ゲームスタート</button>
+            
+            <div style="text-align: left; background: #444; padding: 10px; border-radius: 5px; font-size: 12px; height: 80px; overflow-y: scroll; margin-top: 10px;">
+                <strong>【個人情報の取り扱い及びデータ利用について】</strong><br>
+                本シミュレーションで入力されたIDおよびプレイデータ（軌跡・選択履歴）は、学会デモにおけるシステム動作検証のみを目的として記録されます。<br>
+                個人を特定する情報の収集は行わず、取得したデータを第三者へ提供したり、学会の公式な研究・勉強用資料として二次利用することは一切ありません。
+            </div>
+            
+            <label style="font-size: 14px; display: block; margin: 15px 0; cursor: pointer;">
+                <input type="checkbox" id="consent-checkbox"> <strong>上記のデータ利用方針に同意する</strong>
+            </label>
+
+            <button id="btn-start" disabled>次へ（操作説明）</button>
             <br><br>
             <button onclick="openAdminLogin()" style="background-color: #6c757d; font-size: 12px; margin-top: 20px;">管理者ログイン</button>
+        </div>
+    </div>
+
+    <div id="tutorial-screen" class="overlay-screen" style="display: none;">
+        <div class="panel" style="max-width: 600px; text-align: left;">
+            <h2 style="text-align: center;">遊び方とルールの確認</h2>
+            <p>マップ上を移動し、イベントポイント（ピン）に触れると選択肢が表示されます。状況に合わせて適切な行動を選んでください。</p>
+            
+            <div style="background: #222; padding: 15px; border-radius: 5px; margin: 15px 0;">
+                <p style="margin-top: 0;"><strong>【選択肢ボタンの意味】</strong></p>
+                <ul style="line-height: 1.8; margin-bottom: 0; padding-left: 20px;">
+                    <li><span style="color:#00ccff; font-weight:bold;">青色の選択肢（１〜３）</span><br>そのイベントに対する直接的な「行動」を選択します。</li>
+                    <li><span style="color:#ffcc00; font-weight:bold;">黄色の選択肢（４）</span><br>その空間内で、別の事象や手がかりを探すときに使用します。</li>
+                    <li><span style="color:#aaa; font-weight:bold;">グレーの選択肢（５）</span><br>対応を一旦保留し、その空間を離れて別の場所を探すために使用します。</li>
+                </ul>
+            </div>
+
+            <div style="text-align: center; margin-top: 20px;">
+                <button id="btn-real-start" style="background-color: #28a745; font-size: 18px; padding: 12px 30px;">ゲームを開始する</button>
+            </div>
         </div>
     </div>
 
@@ -157,12 +174,23 @@
         <div class="panel" style="width: 80%; max-width: 800px;">
             <h2>シミュレーション結果</h2>
             <div id="result-map-image-container" style="margin-bottom: 15px; border: 1px solid #777;"></div>
+            
             <div style="max-height: 200px; overflow-y: auto; margin-bottom: 15px;">
                 <table id="result-table">
                     <thead><tr><th>経過時間</th><th>場所</th><th>イベント</th><th>選択</th><th>結果</th></tr></thead>
                     <tbody id="result-log-body"></tbody>
                 </table>
             </div>
+
+            <div id="result-comment-area" style="background-color: #e9ecef; color: #333; padding: 15px; border-radius: 5px; margin-bottom: 15px; text-align: left; font-size: 14px; border-left: 5px solid #007bff;">
+                <strong>【管理者からのコメント】</strong><br>
+                シミュレーションお疲れ様でした。<br>
+　　　　　　 　今回は、デモモードのため10分間の制限とさせていただきました。<br>
+                初動対応における迅速な判断と、二次災害を防ぐための優先順位付けが重要となります。<br>
+                ご自身の選択履歴と移動軌跡を振り返り、より安全な行動ルートについて検討してみましょう。<br>
+                皆様からのご意見・ご感想をお待ちしております。今回は、シュミレーションに参加いただきありがとうございました。
+            </div>
+
             <div class="button-area">
                 <button id="btn-save-image" style="background-color: #28a745;">マップ画像を保存</button>
                 <button onclick="showEndScreen()">終了する</button>
@@ -186,7 +214,6 @@
             <button onclick="closeAdminLogin()" style="background-color: #6c757d;">キャンセル</button>
         </div>
     </div>
-
     <div id="admin-screen" class="overlay-screen" style="display: none;">
         <div class="panel" style="width: 90%; max-width: 1000px;">
             <h2>管理者画面</h2>
