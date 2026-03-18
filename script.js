@@ -1,4 +1,4 @@
-// script.js - 完全版（時間制限を10分に変更）
+// script.js - 完全版（CSV列ズレ修正・10分制限・色分け・当たり緩和）
 
 const GAS_URL = "https://script.google.com/macros/s/AKfycbwFkwNX-YeMomdhC31w3Y5I1jtYtNwZ2slsuI1SHaczBdsg2Z0hcO7zqYbNrfaj00bRPQ/exec";
 
@@ -8,8 +8,7 @@ const COLLISION_SRC = "./mapdemo - collision.bmp";
 const CSV_SRC = "./data.csv";
 
 // --- 設定値 ---
-// ★制限時間を30から10に変更
-const MAX_TIME_LIMIT = 10; 
+const MAX_TIME_LIMIT = 10; // ★10分制限
 const MOVE_FRAMES_PER_MINUTE = 120; 
 
 // --- DOM要素 ---
@@ -125,6 +124,7 @@ document.addEventListener('DOMContentLoaded', () => {
     bindDpad('btn-right', 'ArrowRight');
 });
 
+// ★マウスでの座標確認機能（左下に表示されます）
 canvas.addEventListener('mousemove', (e) => {
     const rect = canvas.getBoundingClientRect();
     const mouseX = e.clientX - rect.left;
@@ -203,7 +203,7 @@ function recordTrajectoryPoint() {
 
 function checkCollision(x, y) {
     if (x < 0 || x > mapImage.width || y < 0 || y > mapImage.height) return true;
-    const r = 2; 
+    const r = 2; // 当たり判定の緩和
     const checkPoints = [
         { px: x, py: y }, { px: x - r, py: y }, { px: x + r, py: y },
         { px: x, py: y - r }, { px: x, py: y + r }
@@ -301,19 +301,31 @@ function finishGame() {
 
 window.showEndScreen = () => { resultScreen.style.display = 'none'; endScreen.style.display = 'flex'; };
 
-// --- CSVパース ---
+// --- CSVパース（★新しいCSVの列順に合わせて修正） ---
 function parseCSV(text) {
     const lines = text.trim().split('\n'); roomData = [];
     for (let i = 1; i < lines.length; i++) {
         const row = parseCSVLine(lines[i]); if(row.length < 5) continue;
-        const csvNo = row[0], csvManageId = row[1], roomName = row[2], x = parseInt(row[3]), y = parseInt(row[4]), r = parseInt(row[5]), order = parseInt(row[6]); 
+        
+        // CSVの列のインデックスを新しいフォーマットに修正
+        const csvNo = row[0];
+        const csvManageId = ""; // 管理No列がなくなったため空白で処理
+        const roomName = row[1];
+        const x = parseInt(row[2]); // C列
+        const y = parseInt(row[3]); // D列
+        const r = parseInt(row[4]); // E列
+        const order = parseInt(row[5]); // F列
+        
         let room = roomData.find(d => d.name === roomName && Math.abs(d.x - x) < 5 && Math.abs(d.y - y) < 5);
         if(!room) { room = { name: roomName, x: x, y: y, radius: r, tasks: [], isDiscovered: false, ignoreUntilExit: false, currentTaskIndex: 0, csvNo: csvNo, csvManageId: csvManageId }; roomData.push(room); }
-        const task = { id: row[0], name: row[7], description: row[8], order: order, choices: [], status: 'pending' };
-        if(row[9]) task.choices.push({ text: row[9], result: row[10], time: parseInt(row[11]||0) });
-        if(row[12]) task.choices.push({ text: row[12], result: row[13], time: parseInt(row[14]||0) });
-        if(row[15]) task.choices.push({ text: row[15], result: row[16], time: parseInt(row[17]||0) });
-        if(row[18]) task.choices.push({ text: row[18], result: row[19], time: parseInt(row[20]||0) });
+        
+        // 選択肢の列も1つずつ左にズレたため修正
+        const task = { id: row[0], name: row[6], description: row[7], order: order, choices: [], status: 'pending' };
+        if(row[8]) task.choices.push({ text: row[8], result: row[9], time: parseInt(row[10]||0) });
+        if(row[11]) task.choices.push({ text: row[11], result: row[12], time: parseInt(row[13]||0) });
+        if(row[14]) task.choices.push({ text: row[14], result: row[15], time: parseInt(row[16]||0) });
+        if(row[17]) task.choices.push({ text: row[17], result: row[18], time: parseInt(row[19]||0) });
+        
         room.tasks.push(task);
     }
     roomData.forEach(room => { room.tasks.sort((a, b) => a.order - b.order); });
@@ -428,7 +440,11 @@ document.getElementById('btn-start').onclick = () => {
     
     document.getElementById('top-screen').style.display = 'none';
     isGameRunning = true;
-    player.x = 414; player.y = 364; recordTrajectoryPoint(); hasPlayerMoved = false;
+    
+    // ★スタート位置。もし別の座標から始めたければ、マウスで調べてここの数字を変えてください！
+    player.x = 414; player.y = 364; 
+    
+    recordTrajectoryPoint(); hasPlayerMoved = false;
 
     if (dpadControls) {
         dpadControls.style.display = 'grid';
